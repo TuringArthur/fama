@@ -1,0 +1,25 @@
+{
+  "$schema": "https://v2-8-13.turborepo.dev/schema.json",
+  "globalEnv": ["CI", "FAMA_DISABLE_SHARE"],
+  "globalPassThroughEnv": ["CI", "FAMA_DISABLE_SHARE"],
+  "tasks": {
+    "typecheck": {},
+    "build": {
+      "dependsOn": [],
+      "outputs": ["dist/**"]
+    },
+    "fama#test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "passThroughEnv": ["*"]
+    },
+    "@fama-ai/app#test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "@fama-ai/ui#test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    }
+  }
+}
