@@ -1,0 +1,11 @@
+{
+  "skillId": "1896400002",
+  "name": "court-codes",
+  "displayName": "法院代字查询",
+  "description": "人民法院代字查询与法律文书案号生成工具",
+  "category": "legal",
+  "tags": ["法院", "代字", "案号", "法律文书", "审判"],
+  "author": "MiniMax Agent",
+  "createdAt": "2026-03-28",
+  "version": "1.0.0"
+}

@@ -1,0 +1,24 @@
+{
+  "id": 189,
+  "name": "case-withdrawal-notification",
+  "description": "生成检察机关的通知撤销案件书法律文书。当用户要求生成、起草或撰写通知撤销案件书时使用。",
+  "created_at": "2026-03-26",
+  "updated_at": "2026-03-26",
+  "author": "MiniMax Agent",
+  "tags": ["法律文书", "检察院", "案件撤销", "司法文书", "刑事诉讼"],
+  "category": "法律与司法",
+  "version": "1.0.0",
+  "language": "zh-CN",
+  "inputs": {
+    "required": ["procuratorate_name", "investigation_authority", "case_received_date", "case_number", "case_name"],
+    "optional": ["case_type", "original_filing_date", "filing_reason_summary", "revocation_facts", "legal_basis", "review_conclusion"]
+  },
+  "outputs": {
+    "format": "markdown",
+    "template": "legal_document"
+  },
+  "validation": {
+    "required_fields": ["procuratorate_name", "investigation_authority", "case_received_date", "revocation_reason"],
+    "format_check": true
+  }
+}

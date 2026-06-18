@@ -1,0 +1,10 @@
+{
+  "id": "8982834",
+  "version": "1.0.0",
+  "name": "first-instance-criminal-judgment",
+  "description": "用于撰写、生成、创建刑事案件第一审判决书。当用户要求撰写公诉案件判决书、生成一审刑事判决文书、创建法院判决书、制作刑事判决书模板时使用。",
+  "author": "MiniMax Agent",
+  "created_at": "2026-03-25",
+  "category": "法律文书",
+  "tags": ["判决书", "刑事", "一审", "公诉案件", "法院文书"]
+}

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>量刑建议书</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "SimSun", "宋体", "Times New Roman", serif;
+            font-size: 16px;
+            line-height: 2;
+            color: #000;
+            background: #fff;
+        }
+
+        .document {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 50px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .org-name {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            letter-spacing: 4px;
+        }
+
+        .title {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            letter-spacing: 8px;
+        }
+
+        .case-number {
+            font-size: 16px;
+            text-align: right;
+            margin-bottom: 30px;
+        }
+
+        .defendant-info {
+            margin-bottom: 30px;
+            text-indent: 2em;
+        }
+
+        .section {
+            margin-bottom: 25px;
+            text-align: justify;
+            text-indent: 2em;
+        }
+
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-indent: 0;
+        }
+
+        .evidence-list {
+            margin-left: 2em;
+            margin-top: 10px;
+        }
+
+        .signatures {
+            margin-top: 50px;
+            text-align: right;
+        }
+
+        .prosecutor-info {
+            margin-bottom: 10px;
+        }
+
+        .date {
+            margin-top: 30px;
+            margin-bottom: 40px;
+        }
+
+        .attachment {
+            margin-top: 30px;
+            text-indent: 2em;
+        }
+
+        @media print {
+            body {
+                font-size: 14pt;
+            }
+            .document {
+                padding: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="document">
+        <div class="header">
+            <div class="org-name">人民检察院</div>
+            <div class="title">量刑建议书</div>
+        </div>
+
+        <div class="case-number">
+            ×检量建〔2024〕XXX号
+        </div>
+
+        <div class="defendant-info" id="defendant-info">
+            被告人：[被告人姓名]，[性别]，[出生日期]出生，身份证号码：[身份证号]，[民族]族，[文化程度]文化，[职业]，户籍所在地[户籍地址]，现住[现住址]。因涉嫌[罪名]，于[拘留日期]被刑事拘留，[逮捕日期]经本院批准逮捕。
+        </div>
+
+        <div class="section">
+            <div class="section-title">一、案件事实</div>
+            <p id="case-facts">[案件事实描述]</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">二、证据情况</div>
+            <p id="evidence-summary">[证据概述]</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">三、量刑情节</div>
+            <p id="sentencing-factors">[量刑情节分析]</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">四、量刑建议</div>
+            <p id="sentencing-recommendation">[具体量刑建议]</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">五、法律依据</div>
+            <p id="legal-basis">[法律依据]</p>
+        </div>
+
+        <div class="signatures">
+            <div class="prosecutor-info">检察员：[检察官姓名]</div>
+            <div class="date" id="document-date">二〇二四年XX月XX日</div>
+        </div>
+
+        <div class="attachment">
+            <strong>附：</strong>
+        </div>
+        <div class="evidence-list">
+            <div>1. 案卷材料共X卷；</div>
+            <div>2. 证据目录清单1份；</div>
+            <div>3. 被害人意见1份（如有）。</div>
+        </div>
+    </div>
+</body>
+</html>

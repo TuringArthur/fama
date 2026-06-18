@@ -1,0 +1,13 @@
+{
+  "id": 1024,
+  "name": "arrest-warrant-request",
+  "display_name": "提请批准逮捕书生成器",
+  "description": "生成标准格式的提请批准逮捕书文书，适用于公安机关向检察院提请批准逮捕犯罪嫌疑人",
+  "version": "1.0.0",
+  "category": "法律文书",
+  "tags": ["逮捕", "公安机关", "检察院", "刑事案件", "法律文书"],
+  "author": "MiniMax Agent",
+  "created_at": "2026-03-29",
+  "updated_at": "2026-03-29",
+  "source": "提请批准逮捕书.jpg"
+}
