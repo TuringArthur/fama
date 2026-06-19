@@ -64,6 +64,9 @@ type PlatformBase = {
   /** Write text to a path chosen via the native save dialog (desktop only) */
   writeTextFile?(path: string, content: string): Promise<void>
 
+  /** Write binary data (e.g. a generated .docx) to a path (desktop only) */
+  writeBinaryFile?(path: string, data: Uint8Array): Promise<void>
+
   /** Storage mechanism, defaults to localStorage */
   storage?: (name?: string) => SyncStorage | AsyncStorage
 

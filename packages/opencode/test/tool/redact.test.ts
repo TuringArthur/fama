@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import {
+  applyFindings,
+  applyValues,
   buildMapping,
   CATEGORY_LABELS,
   detect,
+  distinctValues,
   redact,
   redactedCopyName,
   summarize,
@@ -183,9 +186,73 @@ describe("redact redactedCopyName", () => {
     expect(redactedCopyName("起诉状.md")).toBe("起诉状.脱密.md")
   })
 
-  test("normalizes non-readable types to markdown", () => {
-    expect(redactedCopyName("起诉状.docx")).toBe("起诉状.脱密.md")
+  test("keeps the docx/doc suffix as a real .docx output", () => {
+    expect(redactedCopyName("判决书.docx")).toBe("判决书.脱密.docx")
+    expect(redactedCopyName("判决书.doc")).toBe("判决书.脱密.docx")
     expect(redactedCopyName("file")).toBe("file.脱密.txt")
+  })
+})
+
+describe("redact applyFindings", () => {
+  test("redacts only from a user-approved finding subset (deletions honored)", () => {
+    const text = "原告：张三，身份证号 110101199001011234。电话 13800138000。"
+    const all = detect(text)
+    // 模拟用户删除了误报的那条（保留其余）
+    const approved = all.filter((f) => f.category !== "idCard")
+    const result = applyFindings(text, approved)
+    // 被删除的身份证号保留原文，未被替换
+    expect(result.redacted).toContain("110101199001011234")
+    expect(result.redacted).not.toContain("[身份证号1]")
+    // 其余照常脱密
+    expect(result.redacted).toContain("[手机号1]")
+  })
+
+  test("applyFindings with an empty subset returns the original text untouched", () => {
+    const text = "原告：张三。"
+    const result = applyFindings(text, [])
+    expect(result.redacted).toBe(text)
+    expect(result.findings).toEqual([])
+    expect(result.mapping).toEqual([])
+  })
+})
+
+describe("redact value-entry review", () => {
+  const PLAINT2 =
+    "原告：张三，电话 13800138000。被告：李四，电话 13900139000。张三又来电话 13800138000。"
+
+  test("distinctValues folds repeated values into one entry each", () => {
+    const entries = distinctValues(detect(PLAINT2))
+    const phones = entries.filter((e) => e.category === "phone").map((e) => e.value)
+    expect(phones).toContain("13800138000")
+    expect(phones).toContain("13900139000")
+    // 张三 only once
+    expect(entries.filter((e) => e.value === "张三").length).toBe(1)
+  })
+
+  test("user can delete an entry (false positive kept)", () => {
+    const entries = distinctValues(detect(PLAINT2)).filter((e) => e.category !== "name")
+    const result = applyValues(PLAINT2, entries)
+    // 姓名保留原文（被删除）
+    expect(result.redacted).toContain("张三")
+    expect(result.redacted).toContain("李四")
+    // 其余照常脱密
+    expect(result.redacted).toContain("[手机号1]")
+  })
+
+  test("user can modify an entry value (re-matches new text)", () => {
+    const entries = distinctValues(detect(PLAINT2))
+    const phoneEntry = entries.find((e) => e.value === "13800138000")!
+    phoneEntry.value = "电话"
+    const result = applyValues(PLAINT2, entries)
+    // “电话”三字被脱敏
+    expect(result.redacted).not.toContain("电话")
+  })
+
+  test("user can add a brand-new entry (catches a miss)", () => {
+    const entries = distinctValues(detect(PLAINT2))
+    entries.push({ category: "name", value: "李四" }) // 假设引擎本未识别李四
+    const result = applyValues(PLAINT2, entries)
+    expect(result.redacted).toContain("[姓名")
   })
 })
 

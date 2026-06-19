@@ -242,11 +242,9 @@ export function buildMapping(findings: Finding[]): MappingEntry[] {
   return mapping
 }
 
-export function redact(text: string, options: RedactionOptions = {}): RedactionResult {
-  const want = options.categories ? new Set(options.categories) : null
-  const findings = detect(text, { customRules: options.customRules }).filter(
-    (f) => f.category === "custom" || (want ? want.has(f.category) : true),
-  )
+// 用一组既定的 findings 生成脱密结果（占位符 + 替换 + 统计 + 范围）。
+// 暴露给 UI：让用户先审阅、删改 detect() 的结果，再以删改后的子集正式脱密。
+export function applyFindings(text: string, findings: Finding[]): RedactionResult {
   const mapping = buildMapping(findings)
   const tokenByValue = new Map<string, string>()
   for (const m of mapping) tokenByValue.set(`${findingLabel(m)}|${m.value}`, m.token)
@@ -262,6 +260,92 @@ export function redact(text: string, options: RedactionOptions = {}): RedactionR
 
   const stats: RedactionStats = {}
   for (const f of findings) stats[f.category] = (stats[f.category] ?? 0) + 1
+
+  const scopeHits: ScopeHits = {
+    nationalSecret: findings.some((f) => f.scope === "nationalSecret"),
+    commercialSecret: findings.some((f) => f.scope === "commercialSecret"),
+    personalPrivacy: findings.some((f) => f.scope === "personalPrivacy"),
+  }
+
+  return { redacted, findings, mapping, stats, scopeHits }
+}
+
+export function redact(text: string, options: RedactionOptions = {}): RedactionResult {
+  const want = options.categories ? new Set(options.categories) : null
+  const findings = detect(text, { customRules: options.customRules }).filter(
+    (f) => f.category === "custom" || (want ? want.has(f.category) : true),
+  )
+  return applyFindings(text, findings)
+}
+
+// 一条「要被脱敏的值」：脱敏时把原文里所有出现的 value 替换为占位符。
+// 这是审阅阶段用户可自由删/改/增的最小单元（由 detect 的结果去重得到）。
+export type ValueEntry = {
+  category: Category
+  value: string
+  // 自定义规则来源时携带规则名，用于占位符标签；内置类别为空。
+  label?: string
+}
+
+// 把按位置命中的 findings 折叠成「去重的值清单」，便于在 UI 里逐行编辑。
+export function distinctValues(findings: Finding[]): ValueEntry[] {
+  const seen = new Set<string>()
+  const out: ValueEntry[] = []
+  for (const f of findings) {
+    if (!f.value || seen.has(f.value)) continue
+    seen.add(f.value)
+    out.push({ category: f.category, value: f.value, label: f.label })
+  }
+  return out
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+// 用一份用户删改后的「值清单」生成脱密结果：原文里每个值的所有出现处都替换为占位符。
+// 支持用户新增/修改/删除任意条目；同值只占一个占位符，按值长度降序替换以减少互相嵌套的误替换。
+export function applyValues(text: string, entries: ValueEntry[]): RedactionResult {
+  const tokenByValue = new Map<string, string>()
+  const counter: Record<string, number> = {}
+  const mapping: MappingEntry[] = []
+  for (const e of entries) {
+    if (!e.value || tokenByValue.has(e.value)) continue
+    const label = e.label ?? CATEGORY_LABELS[e.category]
+    const n = (counter[label] ?? 0) + 1
+    counter[label] = n
+    const token = `[${label}${n}]`
+    tokenByValue.set(e.value, token)
+    mapping.push({ token, category: e.category, value: e.value, label: e.label })
+  }
+
+  // 按值长度降序替换，避免短值先替换掉长值里的一部分。
+  const ordered = [...tokenByValue.entries()].sort((a, b) => b[0].length - a[0].length)
+  let redacted = text
+  for (const [value, token] of ordered) redacted = redacted.split(value).join(token)
+
+  // 统计：统计原文里每个值的出现次数（重算位置，供 findings/stats）。
+  const findings: Finding[] = []
+  const stats: RedactionStats = {}
+  for (const e of entries) {
+    if (!e.value) continue
+    const re = new RegExp(escapeRegExp(e.value), "g")
+    let count = 0
+    for (const m of text.matchAll(re)) {
+      const start = m.index ?? 0
+      findings.push({
+        category: e.category,
+        scope: CATEGORY_SCOPE[e.category],
+        value: e.value,
+        start,
+        end: start + e.value.length,
+        label: e.label,
+      })
+      count++
+    }
+    if (count) stats[e.category] = (stats[e.category] ?? 0) + count
+  }
+  findings.sort((a, b) => a.start - b.start || b.end - a.end)
 
   const scopeHits: ScopeHits = {
     nationalSecret: findings.some((f) => f.scope === "nationalSecret"),
@@ -311,7 +395,10 @@ function maskPreview(value: string): string {
   return value.slice(0, 3) + "***" + value.slice(-2)
 }
 
-// 源文件名 → 脱密副本文件名：foo.txt -> foo.脱密.txt；foo.docx -> foo.脱密.md；foo -> foo.脱密.txt。
+// 源文件名 → 脱密副本文件名：保持「同后缀」。
+//   foo.txt/foo.md  -> foo.脱密.txt / foo.脱密.md（纯文本，直接落盘）
+//   foo.docx/foo.doc -> foo.脱密.docx（Office 输出统一写为真实 .docx；旧 .doc 在浏览器内无法重建二进制，故落为 .docx）
+//   foo（无后缀）    -> foo.脱密.txt
 // 纯字符串实现（不依赖 node 的 path 模块），便于在浏览器/渲染进程内直接使用。
 export function redactedCopyName(fileName: string): string {
   const slash = Math.max(fileName.lastIndexOf("/"), fileName.lastIndexOf("\\"))
@@ -320,8 +407,18 @@ export function redactedCopyName(fileName: string): string {
   if (dot <= 0) return `${leaf}.脱密.txt`
   const ext = leaf.slice(dot).toLowerCase()
   const base = leaf.slice(0, dot)
-  const readable = ext === ".txt" || ext === ".md" || ext === ".markdown"
-  return readable ? `${base}.脱密${ext}` : `${base}.脱密.md`
+  if (ext === ".txt" || ext === ".md" || ext === ".markdown") return `${base}.脱密${ext}`
+  // Office 文档：脱密后产物用真实 .docx 承载，保证可直接用 Word 打开。
+  if (ext === ".docx" || ext === ".docm" || ext === ".doc") return `${base}.脱密.docx`
+  return `${base}.脱密.md`
+}
+
+// 判断源文件是否为 Office 文档（脱密后需生成真实 .docx，而非写纯文本）。
+export function isOfficeSource(fileName: string): boolean {
+  const dot = fileName.lastIndexOf(".")
+  if (dot < 0) return false
+  const ext = fileName.slice(dot).toLowerCase()
+  return ext === ".docx" || ext === ".docm" || ext === ".doc"
 }
 
 export const REDACT_CATEGORIES = Object.keys(CATEGORY_LABELS) as Category[]

@@ -81,6 +81,7 @@ export type ElectronAPI = {
   getPathForFile: (file: File) => string
   saveFilePicker: (opts?: { title?: string; defaultPath?: string }) => Promise<string | null>
   writeTextFile: (path: string, content: string) => Promise<void>
+  writeBinaryFile: (path: string, data: Uint8Array) => Promise<void>
   openLink: (url: string) => void
   openPath: (path: string, app?: string) => Promise<void>
   readClipboardImage: () => Promise<{ buffer: ArrayBuffer; width: number; height: number } | null>

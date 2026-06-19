@@ -179,6 +179,16 @@ export function registerIpcHandlers(deps: Deps) {
     await writeFile(path, content, "utf8")
   })
 
+  // 案件脱密：把脱密后生成的真实 .docx（二进制）写入磁盘，保证与源文件同后缀且可用 Word 打开。
+  ipcMain.handle(
+    "write-binary-file",
+    async (_event: IpcMainInvokeEvent, path: string, data: Uint8Array) => {
+      const { mkdir } = await import("node:fs/promises")
+      await mkdir(dirname(path), { recursive: true })
+      await writeFile(path, Buffer.from(data))
+    },
+  )
+
   ipcMain.on("open-link", (_event: IpcMainEvent, url: string) => {
     void shell.openExternal(url)
   })

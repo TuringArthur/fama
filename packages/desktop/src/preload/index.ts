@@ -91,6 +91,7 @@ const api: ElectronAPI = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   saveFilePicker: (opts) => ipcRenderer.invoke("save-file-picker", opts),
   writeTextFile: (path, content) => ipcRenderer.invoke("write-text-file", path, content),
+  writeBinaryFile: (path, data) => ipcRenderer.invoke("write-binary-file", path, data),
   openLink: (url) => ipcRenderer.send("open-link", url),
   openPath: (path, app) => ipcRenderer.invoke("open-path", path, app),
   readClipboardImage: () => ipcRenderer.invoke("read-clipboard-image"),

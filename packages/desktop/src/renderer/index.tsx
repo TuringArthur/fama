@@ -178,6 +178,10 @@ const createPlatform = (): Platform => {
       return window.api.writeTextFile(path, content)
     },
 
+    writeBinaryFile(path, data) {
+      return window.api.writeBinaryFile(path, data)
+    },
+
     openLink(url: string) {
       window.api.openLink(url)
     },

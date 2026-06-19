@@ -6,12 +6,16 @@ import {
   type Category,
   type CustomRule,
   type RedactionResult,
+  type ValueEntry,
+  applyValues,
   CATEGORY_LABELS,
+  detect,
+  distinctValues,
   REDACT_CATEGORIES,
-  redact,
+  isOfficeSource,
   redactedCopyName,
 } from "@fama-ai/core/redact"
-import { extractOfficeText, isExtractError, type ExtractedText } from "@/utils/docx"
+import { buildDocx, extractOfficeText, isExtractError, type ExtractedText } from "@/utils/docx"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { createStore } from "solid-js/store"
@@ -92,6 +96,8 @@ export function DialogRedact() {
   const [fidelity, setFidelity] = createSignal<ExtractedText["fidelity"]>("high")
   const [extractNote, setExtractNote] = createSignal<string | undefined>(undefined)
   const [result, setResult] = createSignal<RedactionResult | null>(null)
+  // 脱密前审阅阶段：用户可自由删/改/增的「值清单」（token↔value 对照表）。
+  const [entries, setEntries] = createStore<ValueEntry[]>([])
   const [preview, setPreview] = createSignal<"original" | "redacted">("redacted")
   const [busy, setBusy] = createSignal(false)
   const [savedTo, setSavedTo] = createSignal<string | null>(null)
@@ -108,6 +114,8 @@ export function DialogRedact() {
       .filter((r) => r.pattern.trim())
       .map((r): CustomRule => ({ name: r.name.trim() || "自定义", pattern: r.pattern, flags: r.flags.trim() || undefined })),
   })
+  // 审阅阶段是否激活（有可编辑清单、尚未确认）。
+  const inReview = createMemo(() => entries.length > 0 && !result())
 
   const hasText = createMemo(() => text().trim().length > 0)
   const stats = createMemo(() => (result() ? statsEntries(result()!) : []))
@@ -140,6 +148,7 @@ export function DialogRedact() {
       setFidelity(doc.fidelity)
       setExtractNote(doc.note)
       setResult(null)
+      setEntries([])
       setSavedTo(null)
     } catch (error) {
       showToast({ title: String(error) })
@@ -159,12 +168,46 @@ export function DialogRedact() {
     }
   }
 
-  const runRedact = () => {
+  // 第一步：检测并折叠成「值清单」，进入审阅阶段（暂不替换原文）。
+  const startDetect = () => {
     const input = text()
     if (!input.trim()) return
-    setResult(redact(input, options()))
+    const want = options().categories ? new Set(options().categories) : null
+    const findings = detect(input, { customRules: options().customRules }).filter(
+      (f) => f.category === "custom" || (want ? want.has(f.category) : true),
+    )
+    setEntries(distinctValues(findings))
+    setResult(null)
+    setSavedTo(null)
+  }
+
+  // 审阅阶段：删/改/增的辅助。ValueEntry 的 label 来自自定义规则；内置类别为空。
+  const updateEntryValue = (i: number, value: string) => setEntries(i, "value", value)
+  const updateEntryCategory = (i: number, category: Category) =>
+    setEntries(i, (e) => ({ ...e, category, label: undefined }))
+  const removeEntry = (i: number) => setEntries((list) => list.filter((_, idx) => idx !== i))
+  const addEntry = () => setEntries(entries.length, { category: "name", value: "" })
+
+  // 第二步：用用户删改后的值清单正式脱密。
+  const confirmRedact = () => {
+    const approved = entries.filter((e) => e.value.trim())
+    if (!approved.length) {
+      showToast({ title: t("redact.review.empty") })
+      return
+    }
+    setResult(applyValues(text(), approved))
     setPreview("redacted")
     setSavedTo(null)
+  }
+
+  const reset = () => {
+    setText("")
+    setSourceName("")
+    setResult(null)
+    setEntries([])
+    setSavedTo(null)
+    setExtractNote(undefined)
+    setFidelity("high")
   }
 
   // openAttachmentPickerDialog 的回调里拿到的 File 是异步释放的，需要保留引用供批量脱密时再读取。
@@ -218,8 +261,9 @@ export function DialogRedact() {
         }
         try {
           const doc = await readFileText(file)
+          const findings = detect(doc.text, { customRules: options().customRules })
           setItems(idx, { fidelity: doc.fidelity, note: doc.note })
-          setItems(idx, "result", redact(doc.text, options()))
+          setItems(idx, "result", applyValues(doc.text, distinctValues(findings)))
           setItems(idx, "status", "done")
         } catch (error) {
           setItems(idx, "status", "error")
@@ -229,15 +273,6 @@ export function DialogRedact() {
     } finally {
       setBusy(false)
     }
-  }
-
-  const reset = () => {
-    setText("")
-    setSourceName("")
-    setResult(null)
-    setSavedTo(null)
-    setExtractNote(undefined)
-    setFidelity("high")
   }
 
   const copyRedacted = async () => {
@@ -253,16 +288,25 @@ export function DialogRedact() {
     showToast({ title: t("redact.toast.copied") })
   }
 
+  // 脱密内容写盘：Office 源文件 → 生成真实 .docx（同后缀、可用 Word 打开）；文本源 → 纯文本。
+  const writeRedacted = async (path: string, content: string, source: string) => {
+    if (isOfficeSource(source) && platform.writeBinaryFile) {
+      await platform.writeBinaryFile(path, buildDocx(content))
+      return
+    }
+    if (platform.writeTextFile) await platform.writeTextFile(path, COPY_HEADER + content)
+  }
+
   const saveCopy = async () => {
     const r = result()
-    if (!r || !platform.saveFilePickerDialog || !platform.writeTextFile) return
+    if (!r || !platform.saveFilePickerDialog) return
     const baseName = sourceName() || "案件.txt"
     const path = await platform.saveFilePickerDialog({
       title: t("redact.picker.save"),
       defaultPath: redactedCopyName(baseName),
     })
     if (!path) return
-    await platform.writeTextFile(path, COPY_HEADER + r.redacted)
+    await writeRedacted(path, r.redacted, sourceName())
     setSavedTo(path)
     showToast({ title: t("redact.toast.saved") })
   }
@@ -282,8 +326,7 @@ export function DialogRedact() {
   const saveAllBatch = async () => {
     const ready = items.filter((i) => i.result)
     if (!ready.length || platform.platform !== "desktop") return
-    const write = platform.writeTextFile
-    if (!write) return
+    if (!platform.writeTextFile && !platform.writeBinaryFile) return
     const dir = await platform.openDirectoryPickerDialog({ title: t("redact.picker.saveDir") })
     if (!dir || (typeof dir !== "string" && !dir.length)) return
     const outDir = typeof dir === "string" ? dir : dir[0]
@@ -292,7 +335,7 @@ export function DialogRedact() {
     for (const item of ready) {
       const r = item.result!
       const path = joinPath(outDir, redactedCopyName(item.name))
-      await write(path, COPY_HEADER + r.redacted)
+      await writeRedacted(path, r.redacted, item.name)
       setItems(items.indexOf(item), "saved", true)
       saved++
     }
@@ -361,7 +404,7 @@ export function DialogRedact() {
               />
             }
           >
-          <Show when={!result()}>
+          <Show when={!result() && entries.length === 0}>
             <div class="flex flex-col gap-3">
               <Show when={canPickFile()}>
                 <Button size="small" variant="secondary" icon="folder" onClick={pickFile} disabled={busy()} class="self-start">
@@ -379,11 +422,25 @@ export function DialogRedact() {
               />
               <div class="flex items-center justify-between">
                 <span class="text-12-regular text-text-weak">{t("redact.input.hint")}</span>
-                <Button size="small" variant="primary" onClick={runRedact} disabled={!hasText()}>
+                <Button size="small" variant="primary" onClick={startDetect} disabled={!hasText()}>
                   {t("redact.action.run")}
                 </Button>
               </div>
             </div>
+          </Show>
+
+          {/* 审阅阶段：逐条删/改/增后再正式脱密 */}
+          <Show when={inReview()}>
+            <EntriesReview
+              t={t}
+              entries={entries}
+              onValue={updateEntryValue}
+              onCategory={updateEntryCategory}
+              onRemove={removeEntry}
+              onAdd={addEntry}
+              onConfirm={confirmRedact}
+              onBack={() => setEntries([])}
+            />
           </Show>
 
           <Show when={result()}>
@@ -627,6 +684,71 @@ function CustomizationPanel(props: {
         </div>
       </div>
     </details>
+  )
+}
+
+function EntriesReview(props: {
+  t: T
+  entries: ValueEntry[]
+  onValue: (i: number, value: string) => void
+  onCategory: (i: number, category: Category) => void
+  onRemove: (i: number) => void
+  onAdd: () => void
+  onConfirm: () => void
+  onBack: () => void
+}) {
+  const valid = createMemo(() => props.entries.filter((e) => e.value.trim()).length)
+  return (
+    <div class="flex flex-col gap-3">
+      <div class="flex flex-col gap-1">
+        <span class="text-14-medium text-text-strong">{props.t("redact.review.stageTitle")}</span>
+        <span class="text-12-regular text-text-weak">{props.t("redact.review.stageHint")}</span>
+      </div>
+      <div class="flex flex-col gap-1 max-h-[300px] overflow-y-auto rounded-lg border border-border-base p-1">
+        <For each={props.entries}>
+          {(entry, i) => (
+            <div class="flex items-center gap-1.5">
+              <select
+                class="shrink-0 rounded-md bg-surface-base px-1.5 py-1 text-12-regular text-text-base border border-border-base max-w-[110px]"
+                value={entry.category}
+                disabled={!!entry.label}
+                onChange={(e) => props.onCategory(i(), e.currentTarget.value as Category)}
+                title={entry.label ? props.t("redact.review.fromRule") : undefined}
+              >
+                <For each={REDACT_CATEGORIES.filter((c) => c !== "custom")}>
+                  {(cat) => <option value={cat}>{CATEGORY_LABELS[cat]}</option>}
+                </For>
+              </select>
+              <input
+                class="min-w-0 flex-1 rounded-md bg-surface-base px-2 py-1 text-12-regular text-text-base border border-border-base"
+                value={entry.value}
+                onInput={(e) => props.onValue(i(), e.currentTarget.value)}
+              />
+              <Button
+                size="small"
+                variant="ghost"
+                class="shrink-0"
+                onClick={() => props.onRemove(i())}
+                aria-label={props.t("redact.review.delete")}
+              >
+                {props.t("redact.review.delete")}
+              </Button>
+            </div>
+          )}
+        </For>
+      </div>
+      <Button size="small" variant="secondary" onClick={props.onAdd} class="self-start">
+        {props.t("redact.review.add")}
+      </Button>
+      <div class="flex items-center justify-between">
+        <Button size="small" variant="ghost" onClick={props.onBack}>
+          {props.t("redact.review.back")}
+        </Button>
+        <Button size="small" variant="primary" onClick={props.onConfirm} disabled={!valid()}>
+          {props.t("redact.review.confirm")}（{valid()}）
+        </Button>
+      </div>
+    </div>
   )
 }
 
