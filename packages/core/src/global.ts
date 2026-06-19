@@ -7,7 +7,8 @@ import { Flock } from "./util/flock"
 import { Flag } from "./flag/flag"
 import { LayerNode } from "./effect/layer-node"
 
-const app = "opencode"
+const app = "fama"
+const legacy = "opencode"
 const data = path.join(xdgData!, app)
 const cache = path.join(xdgCache!, app)
 const config = path.join(xdgConfig!, app)
@@ -16,7 +17,7 @@ const tmp = path.join(os.tmpdir(), app)
 
 const paths = {
   get home() {
-    return process.env.OPENCODE_TEST_HOME ?? os.homedir()
+    return process.env.FAMA_TEST_HOME ?? os.homedir()
   },
   data,
   bin: path.join(cache, "bin"),
@@ -32,6 +33,31 @@ export const Path = paths
 
 Flock.setGlobal({ state })
 
+// One-time migration of legacy `opencode` directories to `fama` so existing users keep
+// their auth tokens, config, and state. Runs only when the new directory does not yet exist
+// and the legacy one does. tmp is ephemeral and intentionally skipped. rename fails silently
+// across filesystems; sibling xdg directories are virtually always on the same device.
+await Promise.all(
+  [
+    [path.join(xdgConfig!, legacy), config],
+    [path.join(xdgData!, legacy), data],
+    [path.join(xdgState!, legacy), state],
+    [path.join(xdgCache!, legacy), cache],
+  ].map(async ([from, to]) => {
+    try {
+      await fs.access(to).then(
+        () => undefined,
+        async () => {
+          await fs.access(from)
+          await fs.rename(from, to)
+        },
+      )
+    } catch {
+      // Missing legacy dir or cross-device rename; fall through to mkdir below.
+    }
+  }),
+)
+
 await Promise.all([
   fs.mkdir(Path.data, { recursive: true }),
   fs.mkdir(Path.config, { recursive: true }),
@@ -42,7 +68,7 @@ await Promise.all([
   fs.mkdir(Path.repos, { recursive: true }),
 ])
 
-export class Service extends Context.Service<Service, Interface>()("@opencode/Global") {}
+export class Service extends Context.Service<Service, Interface>()("@fama/Global") {}
 
 export interface Interface {
   readonly home: string
@@ -61,7 +87,7 @@ export function make(input: Partial<Interface> = {}): Interface {
     home: Path.home,
     data: Path.data,
     cache: Path.cache,
-    config: Flag.OPENCODE_CONFIG_DIR ?? Path.config,
+    config: Flag.FAMA_CONFIG_DIR ?? Path.config,
     state: Path.state,
     tmp: Path.tmp,
     bin: Path.bin,

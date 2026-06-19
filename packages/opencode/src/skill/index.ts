@@ -21,7 +21,7 @@ import { isRecord } from "@/util/record"
 const CLAUDE_EXTERNAL_DIR = ".claude"
 const AGENTS_EXTERNAL_DIR = ".agents"
 const EXTERNAL_SKILL_PATTERN = "skills/**/SKILL.md"
-const OPENCODE_SKILL_PATTERN = "{skill,skills}/**/SKILL.md"
+const FAMA_SKILL_PATTERN = "{skill,skills}/**/SKILL.md"
 const SKILL_PATTERN = "**/SKILL.md"
 
 // Built-in skill that ships with fama. The model's intuition for what an
@@ -204,7 +204,7 @@ const discoverSkills = Effect.fnUntraced(function* (
 
   const configDirs = yield* config.directories()
   for (const dir of configDirs) {
-    yield* scan(state, dir, OPENCODE_SKILL_PATTERN)
+    yield* scan(state, dir, FAMA_SKILL_PATTERN)
   }
 
   const cfg = yield* config.get()
@@ -245,7 +245,7 @@ const loadSkills = Effect.fnUntraced(function* (
   yield* Effect.logInfo("init", { count: Object.keys(state.skills).length })
 })
 
-export class Service extends Context.Service<Service, Interface>()("@opencode/Skill") {}
+export class Service extends Context.Service<Service, Interface>()("@fama/Skill") {}
 
 export const layer = Layer.effect(
   Service,

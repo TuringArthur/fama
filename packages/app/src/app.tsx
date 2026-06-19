@@ -167,7 +167,7 @@ function UiI18nBridge(props: ParentProps) {
 
 declare global {
   interface Window {
-    __OPENCODE__?: {
+    __FAMA__?: {
       deepLinks?: string[]
     }
     api?: {
@@ -329,7 +329,7 @@ function ConnectionGate(props: ParentProps<{ disableHealthCheck?: boolean }>) {
       when={!checking()}
       fallback={
         <div class="h-dvh w-screen flex flex-col items-center justify-center bg-background-base">
-          <Splash class="w-16 h-20 opacity-50 animate-pulse" />
+          <Splash class="w-16 h-20 animate-pulse" />
         </div>
       }
     >

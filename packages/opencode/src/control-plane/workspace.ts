@@ -162,7 +162,7 @@ export interface Interface {
   readonly startWorkspaceSyncing: (projectID: ProjectV2.ID) => Effect.Effect<void>
 }
 
-export class Service extends Context.Service<Service, Interface>()("@opencode/Workspace") {}
+export class Service extends Context.Service<Service, Interface>()("@fama/Workspace") {}
 
 export const use = serviceUse(Service)
 
@@ -543,9 +543,9 @@ export const layer = Layer.effect(
         .pipe(Effect.orDie)
 
       const env = {
-        OPENCODE_AUTH_CONTENT: JSON.stringify(yield* auth.all()),
-        OPENCODE_WORKSPACE_ID: config.id,
-        OPENCODE_EXPERIMENTAL_WORKSPACES: "true",
+        FAMA_AUTH_CONTENT: JSON.stringify(yield* auth.all()),
+        FAMA_WORKSPACE_ID: config.id,
+        FAMA_EXPERIMENTAL_WORKSPACES: "true",
         OTEL_EXPORTER_OTLP_HEADERS: process.env.OTEL_EXPORTER_OTLP_HEADERS,
         OTEL_EXPORTER_OTLP_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
         OTEL_RESOURCE_ATTRIBUTES: process.env.OTEL_RESOURCE_ATTRIBUTES,

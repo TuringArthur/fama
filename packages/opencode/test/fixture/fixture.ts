@@ -92,7 +92,7 @@ export async function tmpdir<T>(options?: TmpDirOptions<T>) {
     await Bun.write(
       path.join(dirpath, "opencode.json"),
       JSON.stringify({
-        $schema: "https://opencode.ai/config.json",
+        $schema: "https://fama.ai/config.json",
         ...options.config,
       }),
     )
@@ -150,7 +150,7 @@ export function tmpdirScoped<E = never, R = never>(options?: {
       yield* Effect.promise(() =>
         fs.writeFile(
           path.join(dir, "opencode.json"),
-          JSON.stringify({ $schema: "https://opencode.ai/config.json", ...resolved }),
+          JSON.stringify({ $schema: "https://fama.ai/config.json", ...resolved }),
         ),
       )
     }

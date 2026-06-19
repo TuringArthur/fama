@@ -49,7 +49,7 @@ if (import.meta.env.VITE_SENTRY_DSN) {
         (i) =>
           i.name !== "Breadcrumbs" &&
           !(
-            import.meta.env.OPENCODE_CHANNEL === "prod" &&
+            import.meta.env.FAMA_CHANNEL === "prod" &&
             (i.name === "GlobalHandlers" || i.name === "BrowserApiErrors")
           ),
       )
@@ -66,9 +66,9 @@ const deepLinkEvent = "opencode:deep-link"
 
 const emitDeepLinks = (urls: string[]) => {
   if (urls.length === 0) return
-  window.__OPENCODE__ ??= {}
-  const pending = window.__OPENCODE__.deepLinks ?? []
-  window.__OPENCODE__.deepLinks = [...pending, ...urls]
+  window.__FAMA__ ??= {}
+  const pending = window.__FAMA__.deepLinks ?? []
+  window.__FAMA__.deepLinks = [...pending, ...urls]
   window.dispatchEvent(new CustomEvent(deepLinkEvent, { detail: { urls } }))
 }
 
@@ -334,7 +334,7 @@ render(() => {
     const wslServers = useWslServers()
     const splash = (
       <div class="h-dvh w-screen flex flex-col items-center justify-center bg-background-base">
-        <Splash class="w-16 h-20 opacity-50 animate-pulse" />
+        <Splash class="w-16 h-20 animate-pulse" />
       </div>
     )
 

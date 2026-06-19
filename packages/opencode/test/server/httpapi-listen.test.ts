@@ -10,38 +10,38 @@ import { resetDatabase } from "../fixture/db"
 import { disposeAllInstances, tmpdir } from "../fixture/fixture"
 
 const original = {
-  OPENCODE_SERVER_PASSWORD: Flag.OPENCODE_SERVER_PASSWORD,
-  OPENCODE_SERVER_USERNAME: Flag.OPENCODE_SERVER_USERNAME,
-  envPassword: process.env.OPENCODE_SERVER_PASSWORD,
-  envUsername: process.env.OPENCODE_SERVER_USERNAME,
+  FAMA_SERVER_PASSWORD: Flag.FAMA_SERVER_PASSWORD,
+  FAMA_SERVER_USERNAME: Flag.FAMA_SERVER_USERNAME,
+  envPassword: process.env.FAMA_SERVER_PASSWORD,
+  envUsername: process.env.FAMA_SERVER_USERNAME,
 }
 const auth = { username: "opencode", password: "listen-secret" }
 const testPty = process.platform === "win32" ? test.skip : test
 
 afterEach(async () => {
-  Flag.OPENCODE_SERVER_PASSWORD = original.OPENCODE_SERVER_PASSWORD
-  Flag.OPENCODE_SERVER_USERNAME = original.OPENCODE_SERVER_USERNAME
-  if (original.envPassword === undefined) delete process.env.OPENCODE_SERVER_PASSWORD
-  else process.env.OPENCODE_SERVER_PASSWORD = original.envPassword
-  if (original.envUsername === undefined) delete process.env.OPENCODE_SERVER_USERNAME
-  else process.env.OPENCODE_SERVER_USERNAME = original.envUsername
+  Flag.FAMA_SERVER_PASSWORD = original.FAMA_SERVER_PASSWORD
+  Flag.FAMA_SERVER_USERNAME = original.FAMA_SERVER_USERNAME
+  if (original.envPassword === undefined) delete process.env.FAMA_SERVER_PASSWORD
+  else process.env.FAMA_SERVER_PASSWORD = original.envPassword
+  if (original.envUsername === undefined) delete process.env.FAMA_SERVER_USERNAME
+  else process.env.FAMA_SERVER_USERNAME = original.envUsername
   await disposeAllInstances()
   await resetDatabase()
 })
 
 async function startListener() {
-  Flag.OPENCODE_SERVER_PASSWORD = auth.password
-  Flag.OPENCODE_SERVER_USERNAME = auth.username
-  process.env.OPENCODE_SERVER_PASSWORD = auth.password
-  process.env.OPENCODE_SERVER_USERNAME = auth.username
+  Flag.FAMA_SERVER_PASSWORD = auth.password
+  Flag.FAMA_SERVER_USERNAME = auth.username
+  process.env.FAMA_SERVER_PASSWORD = auth.password
+  process.env.FAMA_SERVER_USERNAME = auth.username
   return Server.listen({ hostname: "127.0.0.1", port: 0 })
 }
 
 async function startNoAuthListener() {
-  Flag.OPENCODE_SERVER_PASSWORD = undefined
-  Flag.OPENCODE_SERVER_USERNAME = auth.username
-  delete process.env.OPENCODE_SERVER_PASSWORD
-  process.env.OPENCODE_SERVER_USERNAME = auth.username
+  Flag.FAMA_SERVER_PASSWORD = undefined
+  Flag.FAMA_SERVER_USERNAME = auth.username
+  delete process.env.FAMA_SERVER_PASSWORD
+  process.env.FAMA_SERVER_USERNAME = auth.username
   return Server.listen({ hostname: "127.0.0.1", port: 0 })
 }
 
@@ -329,8 +329,8 @@ describe("HttpApi Server.listen", () => {
         return { initialized, completed }
       },
     })
-    const previous = process.env.OPENCODE_DISABLE_DEFAULT_PLUGINS
-    process.env.OPENCODE_DISABLE_DEFAULT_PLUGINS = "1"
+    const previous = process.env.FAMA_DISABLE_DEFAULT_PLUGINS
+    process.env.FAMA_DISABLE_DEFAULT_PLUGINS = "1"
     let listener: Awaited<ReturnType<typeof startListener>> | undefined
     try {
       listener = await startListener()
@@ -348,8 +348,8 @@ describe("HttpApi Server.listen", () => {
       expect(await Bun.file(tmp.extra.initialized).text()).toBe("initialized\n")
     } finally {
       if (listener) await stop(listener, "timed out cleaning up plugin client listener").catch(() => undefined)
-      if (previous === undefined) delete process.env.OPENCODE_DISABLE_DEFAULT_PLUGINS
-      else process.env.OPENCODE_DISABLE_DEFAULT_PLUGINS = previous
+      if (previous === undefined) delete process.env.FAMA_DISABLE_DEFAULT_PLUGINS
+      else process.env.FAMA_DISABLE_DEFAULT_PLUGINS = previous
     }
   })
 

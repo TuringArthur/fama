@@ -29,7 +29,7 @@ const tools: readonly ToolFixture[] = [
   {
     icon: "✱",
     label:
-      'Grep "OPENCODE.*DB|database|sqlite|drizzle|dev.*db|data.*dir|xdg|APPDATA" in packages/opencode/src (151 matches)',
+      'Grep "FAMA.*DB|database|sqlite|drizzle|dev.*db|data.*dir|xdg|APPDATA" in packages/opencode/src (151 matches)',
   },
   {
     icon: "✱",
@@ -47,7 +47,7 @@ const tools: readonly ToolFixture[] = [
   {
     icon: "✱",
     label:
-      'Grep "export const OPENCODE_DB|OPENCODE_DB|OPENCODE_DEV|Global\\.Path\\.data|data =" in packages/opencode/src (115 matches)',
+      'Grep "export const FAMA_DB|FAMA_DB|FAMA_DEV|Global\\.Path\\.data|data =" in packages/opencode/src (115 matches)',
   },
 ] as const
 

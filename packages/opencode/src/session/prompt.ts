@@ -92,7 +92,7 @@ export interface Interface {
   readonly resolvePromptParts: (template: string) => Effect.Effect<PromptInput["parts"]>
 }
 
-export class Service extends Context.Service<Service, Interface>()("@opencode/SessionPrompt") {}
+export class Service extends Context.Service<Service, Interface>()("@fama/SessionPrompt") {}
 
 export const layer = Layer.effect(
   Service,

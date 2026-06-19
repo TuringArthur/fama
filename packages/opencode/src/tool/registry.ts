@@ -26,6 +26,9 @@ import { Plugin } from "../plugin"
 import { Provider } from "@/provider/provider"
 
 import { WebSearchTool } from "./websearch"
+import { LawSearchTool } from "./law_search"
+import { CaseSearchTool } from "./case_search"
+import { ContractExtractTool } from "./contract_extract"
 import { LspTool } from "./lsp"
 import * as Truncate from "./truncate"
 import { ApplyPatchTool } from "./apply_patch"
@@ -78,7 +81,7 @@ export interface Interface {
   }) => Effect.Effect<Tool.Def[]>
 }
 
-export class Service extends Context.Service<Service, Interface>()("@opencode/ToolRegistry") {}
+export class Service extends Context.Service<Service, Interface>()("@fama/ToolRegistry") {}
 
 export const layer = Layer.effect(
   Service,
@@ -98,6 +101,9 @@ export const layer = Layer.effect(
     const plan = yield* PlanExitTool
     const webfetch = yield* WebFetchTool
     const websearch = yield* WebSearchTool
+    const lawsearch = yield* LawSearchTool
+    const casesearch = yield* CaseSearchTool
+    const contractextract = yield* ContractExtractTool
     const shell = yield* ShellTool
     const globtool = yield* GlobTool
     const writetool = yield* WriteTool
@@ -207,6 +213,9 @@ export const layer = Layer.effect(
           fetch: Tool.init(webfetch),
           todo: Tool.init(todo),
           search: Tool.init(websearch),
+          lawsearch: Tool.init(lawsearch),
+          casesearch: Tool.init(casesearch),
+          contractextract: Tool.init(contractextract),
           skill: Tool.init(skilltool),
           patch: Tool.init(patchtool),
           question: Tool.init(question),
@@ -229,6 +238,9 @@ export const layer = Layer.effect(
             tool.fetch,
             tool.todo,
             tool.search,
+            tool.lawsearch,
+            tool.casesearch,
+            tool.contractextract,
             tool.skill,
             tool.patch,
             ...(flags.experimentalLspTool ? [tool.lsp] : []),

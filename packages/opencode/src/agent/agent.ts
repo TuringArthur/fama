@@ -11,7 +11,11 @@ import { ProviderTransform } from "@/provider/transform"
 
 import PROMPT_GENERATE from "./generate.txt"
 import PROMPT_COMPACTION from "./prompt/compaction.txt"
+import PROMPT_COUNSEL from "./prompt/counsel.txt"
 import PROMPT_EXPLORE from "./prompt/explore.txt"
+import PROMPT_JUDGE from "./prompt/judge.txt"
+import PROMPT_LAWYER from "./prompt/lawyer.txt"
+import PROMPT_PROSECUTOR from "./prompt/prosecutor.txt"
 import PROMPT_SUMMARY from "./prompt/summary.txt"
 import PROMPT_TITLE from "./prompt/title.txt"
 import { Permission } from "@/permission"
@@ -81,7 +85,35 @@ export interface Interface {
 
 type State = Omit<Interface, "generate">
 
-export class Service extends Context.Service<Service, Interface>()("@opencode/Agent") {}
+// 合规护栏：法律角色（律师/法官/检察官/企业法务）在权限链中叠加的默认收紧规则。
+// 只追加具体 deny/ask 模式，绝不覆盖 "*"，避免破坏 defaults 的白名单（外部目录、truncate 等）。
+// evaluate 用 findLast，故晚于 defaults 合入的这些规则对命中模式生效；user 配置仍可显式放宽。
+export const legalGuardrails = Permission.fromConfig({
+  // 敏感凭证/密钥文件：默认拒绝读取，防止客户案卷数据依赖的凭据泄露
+  read: {
+    "**/.ssh/**": "deny",
+    "**/.aws/**": "deny",
+    "**/.gnupg/**": "deny",
+    "**/id_rsa*": "deny",
+    "**/id_ed25519*": "deny",
+    "**/id_ecdsa*": "deny",
+    "*.pem": "deny",
+    "*.key": "deny",
+    "*.keystore": "deny",
+    "*.p12": "deny",
+  },
+  // 批量外发/网络回传类命令：默认询问，防止客户案卷数据未经确认外泄
+  bash: {
+    "curl *": "ask",
+    "wget *": "ask",
+    "scp *": "ask",
+    "sftp *": "ask",
+    "rsync *": "ask",
+    "nc *": "ask",
+  },
+})
+
+export class Service extends Context.Service<Service, Interface>()("@fama/Agent") {}
 
 export const use = serviceUse(Service)
 
@@ -168,7 +200,7 @@ export const layer = Layer.effect(
                 },
                 edit: {
                   "*": "deny",
-                  [path.join(".opencode", "plans", "*.md")]: "allow",
+                  [path.join(".fama", "plans", "*.md")]: "allow",
                   [path.relative(ctx.worktree, path.join(Global.Path.data, path.join("plans", "*.md")))]: "allow",
                 },
               }),
@@ -189,6 +221,79 @@ export const layer = Layer.effect(
             ),
             options: {},
             mode: "subagent",
+            native: true,
+          },
+          // 面向法律职业共同体（律师、法官、检察官等）的中文法律实务助手。
+          // 全功能 primary agent，可读可写、可联网检索现行法规案例，系统提示负责法律行为约束。
+          lawyer: {
+            name: "lawyer",
+            description: `面向律师的中文法律实务助手。擅长合同与文书审查、法条检索释义、案件事实分析、法律文书起草与风险提示。引用法律须注明全称与条文，严禁编造条文或案例。`,
+            options: {},
+            color: "#b91c1c",
+            prompt: PROMPT_LAWYER,
+            permission: Permission.merge(
+              defaults,
+              legalGuardrails,
+              Permission.fromConfig({
+                question: "allow",
+              }),
+              user,
+            ),
+            mode: "primary",
+            native: true,
+          },
+          // 面向审判人员的居中裁判辅助助手（民事/刑事/行政审判全流程）。
+          judge: {
+            name: "judge",
+            description: `面向法官的审判辅助助手。居中裁判、不偏不倚，擅长证据审查、争议焦点归纳、释明、裁判文书起草与说理。以事实为根据、以法律为准绳，严禁编造条文或案例。`,
+            options: {},
+            color: "#1e40af",
+            prompt: PROMPT_JUDGE,
+            permission: Permission.merge(
+              defaults,
+              legalGuardrails,
+              Permission.fromConfig({
+                question: "allow",
+              }),
+              user,
+            ),
+            mode: "primary",
+            native: true,
+          },
+          // 面向检察官的办案辅助助手（刑事公诉、法律监督、公益诉讼）。
+          prosecutor: {
+            name: "prosecutor",
+            description: `面向检察官的办案辅助助手。擅长审查起诉与不起诉判断、量刑建议、出庭支持公诉、侦查/审判/执行监督与公益诉讼。秉持客观义务，兼顾对被告人有利与不利证据，严禁编造条文或案例。`,
+            options: {},
+            color: "#0f766e",
+            prompt: PROMPT_PROSECUTOR,
+            permission: Permission.merge(
+              defaults,
+              legalGuardrails,
+              Permission.fromConfig({
+                question: "allow",
+              }),
+              user,
+            ),
+            mode: "primary",
+            native: true,
+          },
+          // 面向企业法务与合规人员的法务合规助手（合同审查、合规体系、监管规则释义、尽调培训）。
+          counsel: {
+            name: "counsel",
+            description: `面向企业法务与合规人员的法务合规助手。擅长合同与交易审查、合规体系建设（反腐败/反垄断/数据合规/出口管制等）、监管规则检索释义、合规尽调与培训。区分法律/监管/惯例/内部制度，严禁编造，给出可执行建议。`,
+            options: {},
+            color: "#7c3aed",
+            prompt: PROMPT_COUNSEL,
+            permission: Permission.merge(
+              defaults,
+              legalGuardrails,
+              Permission.fromConfig({
+                question: "allow",
+              }),
+              user,
+            ),
+            mode: "primary",
             native: true,
           },
           explore: {

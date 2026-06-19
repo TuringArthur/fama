@@ -47,8 +47,8 @@ export const SettingsAboutV2: Component = () => {
       <div class="bg-surface-base rounded-lg p-4">
         <h2 class="text-lg font-semibold mb-3">{language.t("settings.about.contact")}</h2>
         <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-          <p>{language.t("settings.about.website")}: <a href="https://fama.ai" class="text-blue-500 hover:underline" target="_blank">fama.ai</a></p>
-          <p>{language.t("settings.about.email")}: <a href="mailto:support@fama.ai" class="text-blue-500 hover:underline">support@fama.ai</a></p>
+          <p>{language.t("settings.about.website")}: <a href="https://fama.stdalw.cn" class="text-blue-500 hover:underline" target="_blank">fama.stdalw.cn</a></p>
+          <p>{language.t("settings.about.email")}: <a href="mailto:service@stdlaw.cn" class="text-blue-500 hover:underline">service@stdlaw.cn</a></p>
         </div>
       </div>
 
