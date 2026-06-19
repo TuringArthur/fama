@@ -20,7 +20,10 @@ export function isExtractError(value: ExtractResult): value is ExtractError {
 
 // word/document.xml -> 纯文本：按段落与制表/换行还原可读结构。
 // 纯函数（无 DOMParser 依赖），便于单测。
-const W_TOKEN = /<\/w:p>|<w:tab\b[^>]*\/?>|<w:br\b[^>]*\/?>|<w:t[^>]*>([\s\S]*?)<\/w:t>|<w:cr\b[^>]*\/?>/g
+// 关键：`<w:t` 后必须紧跟 `>` 或空白属性（`<w:t>` / `<w:t xml:space="preserve">`），
+// 否则会错误地吞掉 `<w:tbl>`/`<w:tr>`/`<w:tc>`（表格）等同样以 `<w:t` 开头的元素，
+// 把其中的属性标记（`<w:left .../>`、`<w:pBdr>`、`<w:shd>` 等）当成正文回传。
+const W_TOKEN = /<\/w:p>|<w:tab\b[^>]*\/?>|<w:br\b[^>]*\/?>|<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:cr\b[^>]*\/?>/g
 const ENTITY = /&amp;|&lt;|&gt;|&quot;|&apos;|&#(\d+);/g
 
 function decodeEntity(match: string, code?: string): string {

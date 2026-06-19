@@ -26,6 +26,38 @@ describe("docx text extraction", () => {
     expect(extractTextFromDocumentXml("<w:p></w:p>")).toBe("")
   })
 
+  test("extractTextFromDocumentXml does not swallow table/property elements (w:tbl/w:tc)", () => {
+    // 真实判决书含表格：<w:tbl>/<w:tr>/<w:tc> 同样以 <w:t 开头，旧的正则
+    // `<w:t[^>]*>` 会把 <w:tbl> 当成文本运行起点，吞到第一个 </w:t>，
+    // 连带把属性标记 <w:left .../>、<w:pBdr>、<w:shd> 当正文回传。
+    const xml = `<?xml version="1.0"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>正文起</w:t></w:r></w:p>
+    <w:tbl>
+      <w:tblPr><w:tblStyle w:val="TableGrid"/></w:tblPr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr><w:tcBorders><w:left w:val="none" w:sz="0"/></w:tcBorders><w:shd w:val="clear"/></w:tcPr>
+          <w:p><w:pPr><w:pBdr><w:top w:val="none"/></w:pBdr></w:pPr><w:r><w:t>单元格A</w:t></w:r></w:p>
+        </w:tc>
+        <w:tc><w:p><w:r><w:t>单元格B</w:t></w:r></w:p></w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p><w:r><w:t>正文止</w:t></w:r></w:p>
+  </w:body>
+</w:document>`
+    const text = extractTextFromDocumentXml(xml)
+    expect(text).toContain("正文起")
+    expect(text).toContain("单元格A")
+    expect(text).toContain("单元格B")
+    expect(text).toContain("正文止")
+    // 关键断言：属性标记绝不能泄漏为正文
+    expect(text).not.toContain("w:val=")
+    expect(text).not.toContain("<w:left")
+    expect(text).not.toContain("pBdr")
+  })
+
   test("extractDocBestEffort recovers readable CJK runs and flags low fidelity", () => {
     const utf16 = new Uint16Array("案号说明 原告张三 被告李四 1234".split("").map((c) => c.charCodeAt(0)))
     const out = extractDocBestEffort(new Uint8Array(utf16.buffer).buffer)
