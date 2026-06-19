@@ -75,6 +75,16 @@ describe("tool.registry", () => {
     }),
   )
 
+  // 案件脱密工具是面向保密敏感用户的核心内置能力，必须出现在默认工具列表中。
+  it.instance("registers the redact builtin tool", () =>
+    Effect.gen(function* () {
+      const registry = yield* ToolRegistry.Service
+      const ids = yield* registry.ids()
+
+      expect(ids).toContain("redact")
+    }),
+  )
+
   it.instance("hides task background parameter unless experimental background subagents are enabled", () =>
     Effect.gen(function* () {
       const registry = yield* ToolRegistry.Service

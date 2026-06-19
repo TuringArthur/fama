@@ -1039,6 +1039,12 @@ export default function Layout(props: ParentProps) {
         keybind: "mod+comma",
         onSelect: () => openSettings(),
       },
+      {
+        id: "redact.open",
+        title: language.t("command.redact.open"),
+        category: language.t("command.category.file"),
+        onSelect: () => openRedact(),
+      },
       ...(platform.platform === "desktop" && platform.exportDebugLogs
         ? [
             {
@@ -1226,6 +1232,14 @@ export default function Layout(props: ParentProps) {
     void module.then((x) => {
       if (dialogDead || dialogRun !== run) return
       dialog.show(() => <x.DialogSettings />)
+    })
+  }
+
+  function openRedact() {
+    const run = ++dialogRun
+    void import("@/components/dialog-redact").then((x) => {
+      if (dialogDead || dialogRun !== run) return
+      dialog.show(() => <x.DialogRedact />)
     })
   }
 

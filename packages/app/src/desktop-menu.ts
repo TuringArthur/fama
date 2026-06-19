@@ -130,6 +130,12 @@ export const DESKTOP_MENU: DesktopMenu[] = [
       },
       {
         type: "item",
+        label: "Redact Case (脱密)...",
+        labelKey: "command.redact.open",
+        command: "redact.open",
+      },
+      {
+        type: "item",
         label: "Settings",
         labelKey: "sidebar.settings",
         command: "settings.open",

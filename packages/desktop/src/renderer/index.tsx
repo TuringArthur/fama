@@ -174,6 +174,10 @@ const createPlatform = (): Platform => {
       })
     },
 
+    writeTextFile(path, content) {
+      return window.api.writeTextFile(path, content)
+    },
+
     openLink(url: string) {
       window.api.openLink(url)
     },

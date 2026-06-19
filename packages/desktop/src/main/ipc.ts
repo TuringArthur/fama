@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process"
-import { stat } from "node:fs/promises"
-import { basename } from "node:path"
+import { stat, writeFile } from "node:fs/promises"
+import { basename, dirname } from "node:path"
 import { app, BrowserWindow, Notification, clipboard, dialog, ipcMain, shell } from "electron"
 import type { IpcMainEvent, IpcMainInvokeEvent } from "electron"
 import type { DesktopMenuAction } from "@fama-ai/app/desktop-menu"
@@ -162,6 +162,14 @@ export function registerIpcHandlers(deps: Deps) {
       return result.filePath ?? null
     },
   )
+
+  // 案件脱密：把脱密后的文本写入用户通过 save-file-picker 选定的路径。
+  // recursive 确保目标目录存在（批量/自定义输出目录场景）。
+  ipcMain.handle("write-text-file", async (_event: IpcMainInvokeEvent, path: string, content: string) => {
+    const { mkdir } = await import("node:fs/promises")
+    await mkdir(dirname(path), { recursive: true })
+    await writeFile(path, content, "utf8")
+  })
 
   ipcMain.on("open-link", (_event: IpcMainEvent, url: string) => {
     void shell.openExternal(url)

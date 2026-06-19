@@ -61,6 +61,9 @@ type PlatformBase = {
   /** Open a native save file picker dialog (desktop only) */
   saveFilePickerDialog?(opts?: SaveFilePickerOptions): Promise<string | null>
 
+  /** Write text to a path chosen via the native save dialog (desktop only) */
+  writeTextFile?(path: string, content: string): Promise<void>
+
   /** Storage mechanism, defaults to localStorage */
   storage?: (name?: string) => SyncStorage | AsyncStorage
 
