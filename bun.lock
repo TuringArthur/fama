@@ -56,6 +56,7 @@
         "@tanstack/solid-query": "5.91.4",
         "@tanstack/solid-virtual": "catalog:",
         "@thisbeyond/solid-dnd": "0.7.5",
+        "@zip.js/zip.js": "2.7.62",
         "diff": "catalog:",
         "effect": "catalog:",
         "fuzzysort": "catalog:",

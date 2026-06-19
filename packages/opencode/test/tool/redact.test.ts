@@ -188,3 +188,48 @@ describe("redact redactedCopyName", () => {
     expect(redactedCopyName("file")).toBe("file.脱密.txt")
   })
 })
+
+describe("redact customRules", () => {
+  test("redacts user-defined patterns with [名称N] placeholders", () => {
+    const text = "甲方与甲方就 项目代号 猎鹰 达成协议。猎鹰二期另议。"
+    const result = redact(text, { customRules: [{ name: "项目代号", pattern: "猎鹰" }] })
+    expect(result.redacted).toContain("[项目代号1]")
+    // 猎鹰 出现两次但同一值只占用一个占位符
+    const tokens = result.redacted.match(/\[项目代号1\]/g) ?? []
+    expect(tokens.length).toBe(2)
+    expect(result.mapping.find((m) => m.label === "项目代号" && m.value === "猎鹰")).toBeTruthy()
+  })
+
+  test("custom rules are applied even when a built-in category filter is set", () => {
+    const text = "代号 猎鹰，电话 13800138000。"
+    const result = redact(text, {
+      categories: ["idCard"], // 排除了 phone
+      customRules: [{ name: "代号", pattern: "猎鹰" }],
+    })
+    expect(result.redacted).toContain("[代号1]")
+    expect(result.redacted).toContain("13800138000") // phone 未在白名单，原文保留
+  })
+
+  test("custom rule wins over built-in when spans overlap", () => {
+    const text = "北京某某科技有限公司败诉。"
+    const built = redact(text)
+    expect(built.redacted).toContain("[企业名称1]")
+    const custom = redact(text, { customRules: [{ name: "涉密企业", pattern: "北京某某科技有限公司" }] })
+    expect(custom.redacted).toContain("[涉密企业1]")
+    expect(custom.redacted).not.toContain("[企业名称")
+  })
+
+  test("invalid custom regex is ignored without failing the run", () => {
+    const text = "原告：张三。"
+    const result = redact(text, { customRules: [{ name: "坏规则", pattern: "([0-9" }] })
+    expect(result.redacted).toContain("[姓名1]")
+    expect(result.mapping.find((m) => m.label === "坏规则")).toBeUndefined()
+  })
+
+  test("detect accepts customRules option", () => {
+    const findings = detect("代号为猎鹰。", { customRules: [{ name: "代号", pattern: "猎鹰" }] })
+    const custom = findings.filter((f) => f.category === "custom")
+    expect(custom.length).toBe(1)
+    expect(custom[0]?.label).toBe("代号")
+  })
+})

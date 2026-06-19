@@ -1,6 +1,4 @@
-import { basename, extname } from "path"
-
-// 案件脱密（脱敏）引擎 —— 纯函数，无 IO、无 Effect。
+// 案件脱密（脱敏）引擎 —— 纯函数，无 IO、无 Effect、不依赖 node 内置模块。
 // 目标：让律师、法官、检察官在不泄露当事人信息、国家秘密、商业秘密、个人隐私的前提下，
 // 把案件材料生成一套「脱密副本」，可安全上传到 AI 平台协同处理。
 //
@@ -24,6 +22,7 @@ export type Category =
   | "name" // 姓名（个人隐私）
   | "enterprise" // 企业/机构名称（商业秘密，视场景）
   | "secretMark" // 涉密/密级标记（国家秘密/商业秘密）
+  | "custom" // 用户自定义规则命中的内容（范围视场景，默认按个人隐私处理）
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   idCard: "身份证号",
@@ -36,6 +35,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   name: "姓名",
   enterprise: "企业名称",
   secretMark: "涉密标记",
+  custom: "自定义",
 }
 
 // 每个类别归属的涉敏范围；用于汇总「本文档是否涉国家秘密/商业秘密/个人隐私」。
@@ -50,6 +50,7 @@ export const CATEGORY_SCOPE: Record<Category, SensitivityScope> = {
   name: "personalPrivacy",
   enterprise: "commercialSecret",
   secretMark: "nationalSecret",
+  custom: "personalPrivacy",
 }
 
 export type Finding = {
@@ -58,19 +59,33 @@ export type Finding = {
   value: string
   start: number
   end: number
+  // 自定义规则命中时携带规则名称，用于生成 `[名称N]` 形式的占位符；内置类别为空。
+  label?: string
+}
+
+// 用户自定义脱密规则：把正则匹配到的内容替换为 `[名称N]` 占位符。
+// pattern 为正则源字符串（如 "百达翡丽|XX科技有限公司"）；flags 缺省 "gi"。
+export type CustomRule = {
+  name: string
+  pattern: string
+  flags?: string
 }
 
 export type RedactionOptions = {
-  // 仅脱敏指定类别；缺省为全部类别。
+  // 仅脱敏指定内置类别；缺省为全部内置类别。自定义规则不受此过滤影响（用户显式定义即生效）。
   categories?: Category[]
   // 案号属公开信息，默认不脱敏（保持文档可检索性）。
   keepCaseNumbers?: boolean
+  // 用户自定义规则：补充内置规则覆盖不到的实体（如特定公司、项目代号）。
+  customRules?: CustomRule[]
 }
 
 export type MappingEntry = {
   token: string
   category: Category
   value: string
+  // 自定义规则的名称（用于在对照表中还原占位符标签）；内置类别为空。
+  label?: string
 }
 
 export type RedactionStats = Partial<Record<Category, number>>
@@ -120,7 +135,9 @@ const NAME_CONTEXT_RE = new RegExp(
 // 企业/机构名称。
 const ENTERPRISE_RE = /([\u4e00-\u9fa5A-Za-z0-9（）()]{2,30}(?:有限公司|股份有限公司|有限责任公司|合伙企业|事务所|集团|研究院|研究所|医院|学校|大学|协会|基金会|合作企业|总公司|分公司|子公司|研究中心))/gd
 
+// 自定义规则优先级最高：用户显式定义的实体若与内置规则命中重叠，优先采用自定义占位符。
 const CATEGORY_PRIORITY: Category[] = [
+  "custom",
   "secretMark",
   "idCard",
   "bankCard",
@@ -133,21 +150,46 @@ const CATEGORY_PRIORITY: Category[] = [
   "name",
 ]
 
-function scan(re: RegExp, text: string, category: Category, group = 0): Finding[] {
+function scan(re: RegExp, text: string, category: Category, group = 0, label?: string): Finding[] {
   const out: Finding[] = []
   for (const m of text.matchAll(re)) {
     // 所有检测器都带 `d` 标志，用 indices 取捕获组的精确 span（姓名等只脱敏实体本身）。
     const span = m.indices?.[group]
     const value = m[group]
     if (!span || !value) continue
-    out.push({ category, scope: CATEGORY_SCOPE[category], value, start: span[0], end: span[1] })
+    out.push({ category, scope: CATEGORY_SCOPE[category], value, start: span[0], end: span[1], label })
+  }
+  return out
+}
+
+// 编译用户正则：补齐 global + hasIndices 标志（`g` + `d`），其余沿用用户给定（默认不区分大小写）。
+function compileCustom(rule: CustomRule): RegExp | null {
+  const base = rule.flags ?? "i"
+  const flags = base.includes("g") ? base : base + "g"
+  const withIndices = flags.includes("d") ? flags : flags + "d"
+  try {
+    return new RegExp(rule.pattern, withIndices)
+  } catch {
+    // 非法正则静默忽略，避免一条坏规则让整个脱密失败。
+    return null
+  }
+}
+
+function scanCustom(rules: CustomRule[] | undefined, text: string): Finding[] {
+  if (!rules?.length) return []
+  const out: Finding[] = []
+  for (const rule of rules) {
+    const re = compileCustom(rule)
+    if (!re) continue
+    out.push(...scan(re, text, "custom", 0, rule.name))
   }
   return out
 }
 
 // 扫描文本得到全部命中，按类别优先级解决重叠（高优先级先占位，后命中若与之重叠则丢弃）。
-export function detect(text: string): Finding[] {
+export function detect(text: string, options: { customRules?: CustomRule[] } = {}): Finding[] {
   const raw: Finding[] = [
+    ...scanCustom(options.customRules, text),
     ...scan(SECRET_MARK_RE, text, "secretMark"),
     ...scan(ID_CARD_RE, text, "idCard"),
     ...scan(BANK_CARD_RE, text, "bankCard"),
@@ -172,35 +214,48 @@ export function detect(text: string): Finding[] {
   return kept
 }
 
-// 为每个「不同的敏感值」分配一个稳定占位符，使 AI 仍能识别同一主体/同一信息。
+// 占位符的标签：自定义规则用规则名，内置类别用类别名。
+function findingLabel(f: { category: Category; label?: string }): string {
+  return f.label ?? CATEGORY_LABELS[f.category]
+}
+
+// 同一标签下、相同值 → 同一占位符（使 AI 仍能识别同一主体/同一信息）。
+function findingKey(f: { category: Category; value: string; label?: string }): string {
+  return `${findingLabel(f)}|${f.value}`
+}
+
+// 为每个「不同的敏感值」分配一个稳定占位符。
 export function buildMapping(findings: Finding[]): MappingEntry[] {
   const tokenByValue = new Map<string, string>()
-  const counter: Partial<Record<Category, number>> = {}
+  const counter: Record<string, number> = {}
   const mapping: MappingEntry[] = []
   for (const f of findings) {
-    const key = `${f.category}|${f.value}`
+    const key = findingKey(f)
     if (tokenByValue.has(key)) continue
-    const n = (counter[f.category] ?? 0) + 1
-    counter[f.category] = n
-    const token = `[${CATEGORY_LABELS[f.category]}${n}]`
+    const label = findingLabel(f)
+    const n = (counter[label] ?? 0) + 1
+    counter[label] = n
+    const token = `[${label}${n}]`
     tokenByValue.set(key, token)
-    mapping.push({ token, category: f.category, value: f.value })
+    mapping.push({ token, category: f.category, value: f.value, label: f.label })
   }
   return mapping
 }
 
 export function redact(text: string, options: RedactionOptions = {}): RedactionResult {
   const want = options.categories ? new Set(options.categories) : null
-  const findings = detect(text).filter((f) => (want ? want.has(f.category) : true))
+  const findings = detect(text, { customRules: options.customRules }).filter(
+    (f) => f.category === "custom" || (want ? want.has(f.category) : true),
+  )
   const mapping = buildMapping(findings)
   const tokenByValue = new Map<string, string>()
-  for (const m of mapping) tokenByValue.set(`${m.category}|${m.value}`, m.token)
+  for (const m of mapping) tokenByValue.set(`${findingLabel(m)}|${m.value}`, m.token)
 
   // 从后向前替换，避免位置偏移。
   const ordered = [...findings].sort((a, b) => b.start - a.start)
   let redacted = text
   for (const f of ordered) {
-    const token = tokenByValue.get(`${f.category}|${f.value}`)
+    const token = tokenByValue.get(findingKey(f))
     if (!token) continue
     redacted = redacted.slice(0, f.start) + token + redacted.slice(f.end)
   }
@@ -257,11 +312,15 @@ function maskPreview(value: string): string {
 }
 
 // 源文件名 → 脱密副本文件名：foo.txt -> foo.脱密.txt；foo.docx -> foo.脱密.md；foo -> foo.脱密.txt。
+// 纯字符串实现（不依赖 node 的 path 模块），便于在浏览器/渲染进程内直接使用。
 export function redactedCopyName(fileName: string): string {
-  const ext = extname(fileName)
-  if (!ext) return `${fileName}.脱密.txt`
-  const base = basename(fileName, ext)
-  const readable = [".txt", ".md", ".markdown"].includes(ext.toLowerCase())
+  const slash = Math.max(fileName.lastIndexOf("/"), fileName.lastIndexOf("\\"))
+  const leaf = slash >= 0 ? fileName.slice(slash + 1) : fileName
+  const dot = leaf.lastIndexOf(".")
+  if (dot <= 0) return `${leaf}.脱密.txt`
+  const ext = leaf.slice(dot).toLowerCase()
+  const base = leaf.slice(0, dot)
+  const readable = ext === ".txt" || ext === ".md" || ext === ".markdown"
   return readable ? `${base}.脱密${ext}` : `${base}.脱密.md`
 }
 

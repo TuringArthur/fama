@@ -337,6 +337,12 @@ function HomeDesign() {
     })
   }
 
+  function openRedact() {
+    void import("@/components/dialog-redact").then((x) => {
+      dialog.show(() => <x.DialogRedact />)
+    })
+  }
+
   return (
     <div class="rounded-[10px] shadow-[var(--v2-elevation-raised)] m-2 min-h-0 lg:overflow-hidden bg-v2-background-bg-base self-stretch flex-1">
       <div class="mx-auto grid w-full h-full max-w-[1080px] gap-8 px-6 pb-16 lg:grid-cols-[280px_minmax(0,720px)]">
@@ -360,6 +366,7 @@ function HomeDesign() {
           clearNotifications={clearNotifications}
           unseenCount={unseenCount}
           openSettings={openSettings}
+          openRedact={openRedact}
           openHelp={() => platform.openLink("https://opencode.ai/desktop-feedback")}
           language={language}
         />
@@ -446,6 +453,7 @@ function HomeProjectColumn(props: {
   clearNotifications: (server: ServerConnection.Any, project: LocalProject) => void
   unseenCount: (server: ServerConnection.Any, project: LocalProject) => number
   openSettings: () => void
+  openRedact: () => void
   openHelp: () => void
   language: ReturnType<typeof useLanguage>
 }) {
@@ -500,6 +508,17 @@ function HomeProjectColumn(props: {
         </For>
       </Show>
       <div class="mt-4 flex min-w-0 flex-col gap-1">
+        <button
+          type="button"
+          class={`${HOME_PROJECT_NAV_ROW} text-v2-text-text-faint [&>[data-slot=icon-svg]]:text-v2-icon-icon-muted`}
+          onClick={props.openRedact}
+        >
+          <IconV2 name="shield" size="small" />
+          <span class={HOME_PROJECT_NAV_LABEL}>
+            {props.language.t("sidebar.redact")}
+            <span class="ml-1 text-[10px] text-v2-text-text-faint">{props.language.t("redact.beta")}</span>
+          </span>
+        </button>
         <button
           type="button"
           class={`${HOME_PROJECT_NAV_ROW} text-v2-text-text-faint [&>[data-slot=icon-svg]]:text-v2-icon-icon-muted`}

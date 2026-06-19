@@ -15,7 +15,15 @@ import { createUpdaterSubscriptions } from "./updater-subscriptions"
 
 const pickerFilters = (ext?: string[]) => {
   if (!ext || ext.length === 0) return undefined
-  return [{ name: "Files", extensions: ext }]
+  // Electron 的 FileFilter.extensions 期望不带点的后缀（"txt" 而非 ".txt"）。
+  // 调用方传入的可能带点也可能不带，这里统一去前导点并小写，避免出现 "..txt" 这类过滤器。
+  const normalized = Array.from(
+    new Set(ext.map((e) => e.trim().toLowerCase().replace(/^\.+/, ""))),
+  )
+    .filter((e) => e.length > 0)
+    .sort()
+  if (normalized.length === 0) return undefined
+  return [{ name: "Files", extensions: normalized }]
 }
 
 const pickedFiles = createPickedFileAuthorizations()
