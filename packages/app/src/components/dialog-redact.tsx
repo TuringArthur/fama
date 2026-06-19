@@ -5,6 +5,7 @@ import { showToast } from "@/utils/toast"
 import {
   type Category,
   type CustomRule,
+  type MappingEntry,
   type RedactionResult,
   type ValueEntry,
   applyValues,
@@ -13,7 +14,10 @@ import {
   distinctValues,
   REDACT_CATEGORIES,
   isOfficeSource,
+  parseMappingTable,
   redactedCopyName,
+  restore,
+  restoredCopyName,
 } from "@fama-ai/core/redact"
 import { buildDocx, extractOfficeText, isExtractError, type ExtractedText } from "@/utils/docx"
 import { useLanguage } from "@/context/language"
@@ -26,6 +30,8 @@ const TOGGLE_CATEGORIES = REDACT_CATEGORIES.filter((c) => c !== "custom")
 const READABLE_EXT = [".txt", ".md", ".markdown", ".text"]
 const OFFICE_EXT = [".docx", ".docm", ".doc"]
 const PICKABLE_EXT = [...READABLE_EXT, ...OFFICE_EXT]
+// 对照表导入：支持新格式 .json（往返稳健）与旧版 .md 表格。
+const MAPPING_EXT = [".json", ".md", ".markdown", ".text"]
 
 const COPY_HEADER = [
   `# 案件脱密副本`,
@@ -45,18 +51,6 @@ type BatchItem = {
   status: "pending" | "done" | "error"
   error?: string
   saved: boolean
-}
-
-function mappingBody(result: RedactionResult): string {
-  return [
-    `# 脱密占位对照表`,
-    ``,
-    `> ⚠️ 本表记录脱密前后的对应关系，属敏感信息，请妥善保管，切勿随脱密副本一起上传。`,
-    ``,
-    `| 占位符 | 类别 | 原始值 |`,
-    `| --- | --- | --- |`,
-    ...result.mapping.map((m) => `| ${m.token} | ${CATEGORY_LABELS[m.category]} | ${m.value} |`),
-  ].join("\n")
 }
 
 function statsEntries(result: RedactionResult): Array<[Category, number]> {
@@ -84,7 +78,7 @@ export function DialogRedact() {
   const platform = usePlatform()
   const t = (key: string, params?: Record<string, string | number | boolean>) => language.t(key, params)
 
-  const [mode, setMode] = createSignal<"single" | "batch">("single")
+  const [mode, setMode] = createSignal<"single" | "batch" | "restore">("single")
 
   // 共享脱密选项：类别开关 + 自定义规则。
   const [cats, setCats] = createSignal<Set<Category>>(new Set(TOGGLE_CATEGORIES))
@@ -101,6 +95,15 @@ export function DialogRedact() {
   const [preview, setPreview] = createSignal<"original" | "redacted">("redacted")
   const [busy, setBusy] = createSignal(false)
   const [savedTo, setSavedTo] = createSignal<string | null>(null)
+
+  // 解除脱密（还原）模式：从对照表把 [姓名1] 等占位符换回真实值。
+  const [restoreMap, setRestoreMap] = createSignal<MappingEntry[] | null>(null)
+  // 对照表来源：优先复用本次脱密刚生成的对照表，否则从文件导入。
+  const [restoreMapSource, setRestoreMapSource] = createSignal<"session" | "file">("session")
+  const [restoreText, setRestoreText] = createSignal<string>("")
+  const [restoreSourceName, setRestoreSourceName] = createSignal<string>("")
+  const [restored, setRestored] = createSignal<string | null>(null)
+  const [restoredTo, setRestoredTo] = createSignal<string | null>(null)
 
   // 批量
   const [items, setItems] = createStore<BatchItem[]>([])
@@ -210,6 +213,94 @@ export function DialogRedact() {
     setFidelity("high")
   }
 
+  // 当前生效的对照表：会话来源取本次脱密结果，文件来源取导入解析后的映射。
+  const restoreMapping = createMemo<MappingEntry[]>(() => {
+    if (restoreMapSource() === "file") return restoreMap() ?? []
+    return result()?.mapping ?? []
+  })
+  const sessionHasMapping = createMemo(() => (result()?.mapping.length ?? 0) > 0)
+
+  const loadRestoreInput = async (file: File) => {
+    try {
+      setBusy(true)
+      const doc = await readFileText(file)
+      setRestoreText(doc.text)
+      setRestoreSourceName(file.name)
+      setRestored(null)
+      setRestoredTo(null)
+    } catch (error) {
+      showToast({ title: String(error) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const pickRestoreInput = async () => {
+    if (!platform.openAttachmentPickerDialog) return
+    setBusy(true)
+    try {
+      await platform.openAttachmentPickerDialog(
+        { extensions: PICKABLE_EXT, title: t("redact.restore.picker.input") },
+        async (file) => loadRestoreInput(file),
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const pickRestoreMap = async () => {
+    if (!platform.openAttachmentPickerDialog) return
+    setBusy(true)
+    try {
+      await platform.openAttachmentPickerDialog(
+        { extensions: MAPPING_EXT, title: t("redact.restore.picker.map") },
+        async (file) => {
+          const raw = await file.text()
+          const parsed = parseMappingTable(raw)
+          if (!parsed.length) {
+            showToast({ title: t("redact.restore.map.bad") })
+            return
+          }
+          setRestoreMap(parsed)
+          setRestoreMapSource("file")
+          showToast({ title: t("redact.restore.map.loaded", { count: parsed.length }) })
+        },
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const runRestore = () => {
+    const mapping = restoreMapping()
+    if (!mapping.length || !restoreText().trim()) return
+    const out = restore(restoreText(), mapping)
+    setRestored(out)
+    setRestoredTo(null)
+    if (out === restoreText()) showToast({ title: t("redact.restore.toast.noTokens") })
+  }
+
+  const copyRestored = async () => {
+    const r = restored()
+    if (!r) return
+    await navigator.clipboard.writeText(r)
+    showToast({ title: t("redact.restore.toast.copied") })
+  }
+
+  const saveRestored = async () => {
+    const r = restored()
+    if (!r || !platform.saveFilePickerDialog) return
+    const baseName = restoreSourceName() || "AI处理结果.txt"
+    const path = await platform.saveFilePickerDialog({
+      title: t("redact.restore.picker.save"),
+      defaultPath: restoredCopyName(baseName),
+    })
+    if (!path) return
+    await writeRedacted(path, r, restoreSourceName())
+    setRestoredTo(path)
+    showToast({ title: t("redact.restore.toast.saved") })
+  }
+
   // openAttachmentPickerDialog 的回调里拿到的 File 是异步释放的，需要保留引用供批量脱密时再读取。
   const batchFiles = new Map<string, File>()
   const loadBatchFiles = (files: File[]) => {
@@ -316,10 +407,11 @@ export function DialogRedact() {
     if (!r?.mapping.length || !platform.saveFilePickerDialog || !platform.writeTextFile) return
     const path = await platform.saveFilePickerDialog({
       title: t("redact.picker.saveMap"),
-      defaultPath: "脱密对照表.md",
+      defaultPath: "脱密对照表.json",
     })
     if (!path) return
-    await platform.writeTextFile(path, mappingBody(r))
+    // 写 JSON：结构化、无转义歧义，解除脱密时可原样读回。
+    await platform.writeTextFile(path, JSON.stringify(r.mapping, null, 2))
     showToast({ title: t("redact.toast.mapSaved") })
   }
 
@@ -369,7 +461,7 @@ export function DialogRedact() {
 
         {/* 模式切换 */}
         <div class="flex rounded-md bg-fill-weak p-0.5 self-start">
-          <For each={["single", "batch"] as const}>
+          <For each={["single", "batch", "restore"] as const}>
             {(m) => (
               <button
                 class="text-12-medium px-3 py-1 rounded-[4px] transition-colors"
@@ -385,25 +477,51 @@ export function DialogRedact() {
           </For>
         </div>
 
-        <DropZone onFiles={acceptDroppedFiles} t={t}>
-          <Show
-            when={mode() === "single"}
-            fallback={
-              <BatchPanel
-                t={t}
-                busy={busy()}
-                items={items}
-                doneCount={batchDoneCount()}
-                canPick={canPickFile()}
-                canSave={canSaveFile()}
-                isDesktop={isDesktop()}
-                onPick={collectBatchFiles}
-                onRun={runBatch}
-                onSaveAll={saveAllBatch}
-                onCopy={copyBatchItem}
-              />
-            }
-          >
+        <Show when={mode() === "restore"}>
+          <RestorePanel
+            t={t}
+            busy={busy()}
+            canPick={canPickFile()}
+            canSave={canSaveFile()}
+            sessionHasMapping={sessionHasMapping()}
+            mapSource={restoreMapSource()}
+            restoreMapping={restoreMapping()}
+            restoreText={restoreText()}
+            restoreSourceName={restoreSourceName()}
+            restored={restored()}
+            restoredTo={restoredTo()}
+            onPickInput={pickRestoreInput}
+            onPickMap={pickRestoreMap}
+            onSource={setRestoreMapSource}
+            onText={(v) => {
+              setRestoreText(v)
+              setRestored(null)
+              setRestoredTo(null)
+            }}
+            onRun={runRestore}
+            onCopy={copyRestored}
+            onSave={saveRestored}
+          />
+        </Show>
+
+        <Show when={mode() !== "restore"}>
+          <DropZone onFiles={acceptDroppedFiles} t={t}>
+            <Show when={mode() === "batch"}>
+            <BatchPanel
+              t={t}
+              busy={busy()}
+              items={items}
+              doneCount={batchDoneCount()}
+              canPick={canPickFile()}
+              canSave={canSaveFile()}
+              isDesktop={isDesktop()}
+              onPick={collectBatchFiles}
+              onRun={runBatch}
+              onSaveAll={saveAllBatch}
+              onCopy={copyBatchItem}
+            />
+          </Show>
+          <Show when={mode() === "single"}>
           <Show when={!result() && entries.length === 0}>
             <div class="flex flex-col gap-3">
               <Show when={canPickFile()}>
@@ -531,7 +649,8 @@ export function DialogRedact() {
             )}
           </Show>
         </Show>
-        </DropZone>
+          </DropZone>
+        </Show>
 
         <ReviewBanner t={t} />
       </div>
@@ -868,6 +987,122 @@ function BatchPanel(props: {
             )}
           </For>
         </div>
+      </Show>
+    </div>
+  )
+}
+
+function RestorePanel(props: {
+  t: T
+  busy: boolean
+  canPick: boolean
+  canSave: boolean
+  sessionHasMapping: boolean
+  mapSource: "session" | "file"
+  restoreMapping: MappingEntry[]
+  restoreText: string
+  restoreSourceName: string
+  restored: string | null
+  restoredTo: string | null
+  onPickInput: () => void
+  onPickMap: () => void
+  onSource: (s: "session" | "file") => void
+  onText: (v: string) => void
+  onRun: () => void
+  onCopy: () => void
+  onSave: () => void
+}) {
+  const restoredReady = createMemo(() => !!props.restored)
+  return (
+    <div class="flex flex-col gap-3">
+      <div class="flex flex-col gap-1">
+        <span class="text-14-medium text-text-strong">{props.t("redact.restore.title")}</span>
+        <span class="text-12-regular text-text-weak">{props.t("redact.restore.hint")}</span>
+      </div>
+
+      {/* 对照表来源 */}
+      <div class="flex flex-col gap-1.5 rounded-lg border border-border-base px-3 py-2">
+        <span class="text-12-medium text-text-base">{props.t("redact.restore.map.source")}</span>
+        <label class="flex items-center gap-1.5 text-12-regular text-text-base cursor-pointer">
+          <input
+            type="radio"
+            name="restore-map-source"
+            checked={props.mapSource === "session"}
+            disabled={!props.sessionHasMapping}
+            onChange={() => props.sessionHasMapping && props.onSource("session")}
+          />
+          {props.t("redact.restore.map.session", { count: props.sessionHasMapping ? props.restoreMapping.length : 0 })}
+        </label>
+        <label class="flex items-center gap-1.5 text-12-regular text-text-base cursor-pointer">
+          <input
+            type="radio"
+            name="restore-map-source"
+            checked={props.mapSource === "file"}
+            onChange={() => props.onSource("file")}
+          />
+          {props.t("redact.restore.map.import")}
+        </label>
+        <Show
+          when={props.canPick}
+          fallback={<span class="text-12-regular text-text-weak">{props.t("redact.save.desktopOnly")}</span>}
+        >
+          <Button size="small" variant="secondary" icon="folder" onClick={props.onPickMap} disabled={props.busy} class="self-start">
+            {props.t("redact.restore.action.pickMap")}
+          </Button>
+        </Show>
+        <Show when={props.mapSource === "file" && props.restoreMapping.length}>
+          <span class="text-12-regular text-text-weak">
+            {props.t("redact.restore.map.loaded", { count: props.restoreMapping.length })}
+          </span>
+        </Show>
+      </div>
+
+      {/* 待还原内容 */}
+      <Show when={props.canPick}>
+        <Button size="small" variant="secondary" icon="folder" onClick={props.onPickInput} disabled={props.busy} class="self-start">
+          {props.restoreSourceName ? props.restoreSourceName : props.t("redact.restore.action.pickInput")}
+        </Button>
+      </Show>
+      <textarea
+        class="w-full min-h-[160px] rounded-lg bg-surface-base px-3 py-2 text-14-regular text-text-strong border border-border-base resize-y focus:outline-none"
+        placeholder={props.t("redact.restore.input.placeholder")}
+        value={props.restoreText}
+        onInput={(e) => props.onText(e.currentTarget.value)}
+      />
+      <div class="flex items-center justify-between">
+        <span class="text-12-regular text-text-weak">
+          {props.restoreMapping.length
+            ? props.t("redact.restore.map.loaded", { count: props.restoreMapping.length })
+            : props.t("redact.restore.empty.map")}
+        </span>
+        <Button size="small" variant="primary" onClick={props.onRun} disabled={props.busy || !props.restoreMapping.length || !props.restoreText.trim()}>
+          {props.t("redact.restore.action.run")}
+        </Button>
+      </div>
+
+      <Show when={restoredReady()}>
+        <div class="flex flex-col gap-2">
+          <span class="text-12-medium text-text-weak">{props.t("redact.restore.preview.label")}</span>
+          <pre class="max-h-[260px] overflow-auto rounded-lg bg-surface-base px-3 py-2 text-12-regular text-text-base whitespace-pre-wrap break-all border border-border-base">
+            {props.restored}
+          </pre>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <Button size="small" variant="primary" onClick={props.onCopy}>
+            {props.t("redact.restore.action.copy")}
+          </Button>
+          <Show
+            when={props.canSave}
+            fallback={<span class="text-12-regular text-text-weak">{props.t("redact.save.desktopOnly")}</span>}
+          >
+            <Button size="small" variant="secondary" icon="download" onClick={props.onSave}>
+              {props.t("redact.restore.action.save")}
+            </Button>
+          </Show>
+        </div>
+        <Show when={props.restoredTo}>
+          {(path) => <p class="text-12-regular text-text-weak">{props.t("redact.savedAt", { path: path() })}</p>}
+        </Show>
       </Show>
     </div>
   )

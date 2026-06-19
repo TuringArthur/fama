@@ -97,7 +97,7 @@ export const RedactTool = Tool.define(
             const src = params.filePath ?? join(process.cwd(), "案件.txt")
             const dir = params.outputDir ?? dirname(src)
             outputPath = join(dir, redactedCopyName(basename(src)))
-            mapPath = join(dir, `${basename(outputPath, extname(outputPath))}.对照表.md`)
+            mapPath = join(dir, `${basename(outputPath, extname(outputPath))}.对照表.json`)
             const header = [
               `# 案件脱密副本`,
               ``,
@@ -107,17 +107,9 @@ export const RedactTool = Tool.define(
               ``,
             ].join("\n")
             yield* fs.writeWithDirs(outputPath, header + result.redacted)
+            // 对照表写 JSON：结构化、无转义歧义，解除脱密时可原样读回。
             if (result.mapping.length) {
-              const mapBody = [
-                `# 脱密占位对照表`,
-                ``,
-                `> ⚠️ 本表记录脱密前后的对应关系，属敏感信息，请妥善保管，切勿随脱密副本一起上传。`,
-                ``,
-                `| 占位符 | 类别 | 原始值 |`,
-                `| --- | --- | --- |`,
-                ...result.mapping.map((m) => `| ${m.token} | ${CATEGORY_LABELS[m.category]} | ${m.value} |`),
-              ].join("\n")
-              yield* fs.writeWithDirs(mapPath, mapBody)
+              yield* fs.writeWithDirs(mapPath, JSON.stringify(result.mapping, null, 2))
             }
           }
 

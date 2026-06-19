@@ -422,3 +422,92 @@ export function isOfficeSource(fileName: string): boolean {
 }
 
 export const REDACT_CATEGORIES = Object.keys(CATEGORY_LABELS) as Category[]
+
+// 类别标签 → 枚举 的反向查表（导入对照表时把中文标签还原成 Category）。
+const LABEL_TO_CATEGORY = new Map<string, Category>(
+  (Object.keys(CATEGORY_LABELS) as Category[]).map((c) => [CATEGORY_LABELS[c], c]),
+)
+
+// 既接受英文枚举（JSON 里的 "name"），也接受中文标签（旧版 Markdown 表里的「姓名」）。
+function asCategory(raw: unknown): Category | undefined {
+  if (typeof raw !== "string" || !raw) return undefined
+  if (Object.prototype.hasOwnProperty.call(CATEGORY_LABELS, raw)) return raw as Category
+  return LABEL_TO_CATEGORY.get(raw)
+}
+
+// 解除脱密（还原）：applyValues 的逆运算——把脱密文本里的占位符按对照表换回真实值。
+// 用 split/join 做字面替换（免正则转义）；占位符以 `]` 结尾，`[姓名1]` 与 `[姓名10]` 互不为子串，故无需特殊边界处理。
+export function restore(text: string, mapping: MappingEntry[]): string {
+  if (!mapping.length) return text
+  const valueByToken = new Map<string, string>()
+  for (const m of mapping) if (m.token && m.value) valueByToken.set(m.token, m.value)
+  if (!valueByToken.size) return text
+  // 按 token 长度降序替换：先换更长的占位符，避免前缀相同时相互干扰。
+  const ordered = [...valueByToken.entries()].sort((a, b) => b[0].length - a[0].length)
+  let out = text
+  for (const [token, value] of ordered) out = out.split(token).join(value)
+  return out
+}
+
+// 把已保存的对照表读回为 MappingEntry[]。优先按 JSON 解析（往返稳健）；
+// 兼容早期版本写出的 Markdown 表格 `| 占位符 | 类别 | 原始值 |`。无法识别时返回 []。
+export function parseMappingTable(input: string): MappingEntry[] {
+  const trimmed = input?.trim()
+  if (!trimmed) return []
+  // 仅当形似 JSON 数组时才尝试解析，避免给普通 Markdown 文件喂进 JSON.parse。
+  if (trimmed.startsWith("[")) {
+    try {
+      const data: unknown = JSON.parse(trimmed)
+      if (Array.isArray(data)) {
+        const out: MappingEntry[] = []
+        for (const item of data) {
+          if (typeof item !== "object" || item === null) continue
+          const rec = item as Record<string, unknown>
+          const token = typeof rec.token === "string" ? rec.token : undefined
+          const value = typeof rec.value === "string" ? rec.value : undefined
+          const category = asCategory(rec.category)
+          if (!token || !value || !category) continue
+          const label = typeof rec.label === "string" ? rec.label : undefined
+          out.push(label ? { token, value, category, label } : { token, value, category })
+        }
+        if (out.length) return out
+      }
+    } catch {
+      // 不是合法 JSON，落到 Markdown 解析。
+    }
+  }
+  // 兼容旧版 Markdown 表格。
+  const out: MappingEntry[] = []
+  for (const line of trimmed.split(/\r?\n/)) {
+    const row = line.trim()
+    if (!row.startsWith("|") || !row.endsWith("|")) continue
+    const cols = row.slice(1, -1).split("|").map((c) => c.trim())
+    if (cols.length < 3) continue
+    const token = cols[0]
+    if (!token || token === "占位符" || token.includes("---")) continue
+    const categoryLabel = cols[1]
+    // 原始值列后续可能含 `|`（理论上），按剩余列重新拼回。
+    const value = cols.slice(2).join("|").trim()
+    if (!value) continue
+    const category = asCategory(categoryLabel)
+    if (category) out.push({ token, value, category })
+    else out.push({ token, value, category: "custom", label: categoryLabel })
+  }
+  return out
+}
+
+// 源文件名 → 还原副本文件名（解除脱密后产物）。与 redactedCopyName 对称，用「.还原.」前缀：
+//   foo.txt/foo.md  -> foo.还原.txt / foo.还原.md（纯文本，直接落盘）
+//   foo.docx/foo.doc -> foo.还原.docx（Office 输出统一写为真实 .docx）
+//   foo（无后缀）    -> foo.还原.txt
+export function restoredCopyName(fileName: string): string {
+  const slash = Math.max(fileName.lastIndexOf("/"), fileName.lastIndexOf("\\"))
+  const leaf = slash >= 0 ? fileName.slice(slash + 1) : fileName
+  const dot = leaf.lastIndexOf(".")
+  if (dot <= 0) return `${leaf}.还原.txt`
+  const ext = leaf.slice(dot).toLowerCase()
+  const base = leaf.slice(0, dot)
+  if (ext === ".txt" || ext === ".md" || ext === ".markdown") return `${base}.还原${ext}`
+  if (ext === ".docx" || ext === ".docm" || ext === ".doc") return `${base}.还原.docx`
+  return `${base}.还原.md`
+}

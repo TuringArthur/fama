@@ -26,6 +26,7 @@ import { WebCommand } from "./cli/cmd/web"
 import { PrCommand } from "./cli/cmd/pr"
 import { SessionCommand } from "./cli/cmd/session"
 import { RedactCommand } from "./cli/cmd/redact"
+import { RestoreCommand } from "./cli/cmd/restore"
 import { DbCommand } from "./cli/cmd/db"
 import { errorMessage } from "./util/error"
 import { PluginCommand } from "./cli/cmd/plug"
@@ -101,6 +102,7 @@ const cli = yargs(args)
   .command(PrCommand)
   .command(SessionCommand)
   .command(RedactCommand)
+  .command(RestoreCommand)
   .command(PluginCommand)
   .command(DbCommand)
   .fail((msg, err) => {

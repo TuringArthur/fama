@@ -30,6 +30,7 @@ import { LawSearchTool } from "./law_search"
 import { CaseSearchTool } from "./case_search"
 import { ContractExtractTool } from "./contract_extract"
 import { RedactTool } from "./redact"
+import { RestoreTool } from "./restore"
 import { LspTool } from "./lsp"
 import * as Truncate from "./truncate"
 import { ApplyPatchTool } from "./apply_patch"
@@ -106,6 +107,7 @@ export const layer = Layer.effect(
     const casesearch = yield* CaseSearchTool
     const contractextract = yield* ContractExtractTool
     const redact = yield* RedactTool
+    const restore = yield* RestoreTool
     const shell = yield* ShellTool
     const globtool = yield* GlobTool
     const writetool = yield* WriteTool
@@ -219,6 +221,7 @@ export const layer = Layer.effect(
           casesearch: Tool.init(casesearch),
           contractextract: Tool.init(contractextract),
           redact: Tool.init(redact),
+          restore: Tool.init(restore),
           skill: Tool.init(skilltool),
           patch: Tool.init(patchtool),
           question: Tool.init(question),
@@ -245,6 +248,7 @@ export const layer = Layer.effect(
             tool.casesearch,
             tool.contractextract,
             tool.redact,
+            tool.restore,
             tool.skill,
             tool.patch,
             ...(flags.experimentalLspTool ? [tool.lsp] : []),

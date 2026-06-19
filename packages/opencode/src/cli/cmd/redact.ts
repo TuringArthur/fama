@@ -133,8 +133,9 @@ const run = Effect.fn("Cli.redact.body")(function* (args: RedactArgs) {
       const header = redactionHeader(file)
       yield* fs.writeWithDirs(outputPath, header + result.redacted).pipe(Effect.orDie)
       if (result.mapping.length) {
-        mapPath = path.join(dir, `${path.basename(outputPath, path.extname(outputPath))}.对照表.md`)
-        yield* fs.writeWithDirs(mapPath, mappingBody(result)).pipe(Effect.orDie)
+        mapPath = path.join(dir, `${path.basename(outputPath, path.extname(outputPath))}.对照表.json`)
+        // 写 JSON：结构化、无转义歧义，解除脱密时可原样读回。
+        yield* fs.writeWithDirs(mapPath, JSON.stringify(result.mapping, null, 2)).pipe(Effect.orDie)
       }
     }
 
@@ -176,18 +177,6 @@ function redactionHeader(source: string): string {
     ``,
     `---`,
     ``,
-  ].join("\n")
-}
-
-function mappingBody(result: RedactionResult): string {
-  return [
-    `# 脱密占位对照表`,
-    ``,
-    `> ⚠️ 本表记录脱密前后的对应关系，属敏感信息，请妥善保管，切勿随脱密副本一起上传。`,
-    ``,
-    `| 占位符 | 类别 | 原始值 |`,
-    `| --- | --- | --- |`,
-    ...result.mapping.map((m) => `| ${m.token} | ${CATEGORY_LABELS[m.category]} | ${m.value} |`),
   ].join("\n")
 }
 
