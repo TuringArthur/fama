@@ -429,7 +429,7 @@ export function Titlebar(props: { update?: TitlebarUpdate }) {
               >
                 <ChannelIndicator />
                 <Show when={windows() || linux()}>
-                  <WindowsAppMenu command={command} platform={platform} variant="v2" />
+                  <WindowsAppMenu command={command} platform={platform} variant="v2" t={language.t} />
                 </Show>
                 <TooltipV2
                   placement="bottom"
@@ -589,7 +589,7 @@ export function Titlebar(props: { update?: TitlebarUpdate }) {
               }}
             >
               <Show when={windows() || linux()}>
-                <WindowsAppMenu command={command} platform={platform} />
+                <WindowsAppMenu command={command} platform={platform} t={language.t} />
               </Show>
               <Show when={mac()}>
                 {/*<div class="h-full shrink-0" style={{ width: `${72 / zoom()}px` }} />*/}

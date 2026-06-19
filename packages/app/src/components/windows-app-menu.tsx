@@ -7,17 +7,21 @@ import { Icon as IconV2 } from "@fama-ai/ui/v2/icon"
 
 import { useCommand } from "@/context/command"
 import { DESKTOP_MENU, desktopMenuVisible, type DesktopMenuAction, type DesktopMenuEntry } from "@/desktop-menu"
-import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 
+// Translator is passed from the parent (Titlebar) rather than looked up here.
+// Resolving it via useLanguage() at the component root throws during HMR, because
+// solid-refresh re-evaluates this factory in an isolated boundary without the
+// LanguageProvider ancestor. The built (non-HMR) app would be fine, but passing
+// `t` down keeps the dev server stable and the child provider-agnostic.
 export function WindowsAppMenu(props: {
   command: ReturnType<typeof useCommand>
   platform: ReturnType<typeof usePlatform>
   variant?: "legacy" | "v2"
+  t: (key: string, params?: Record<string, string | number | boolean>) => string
 }) {
-  const language = useLanguage()
   const resolveLabel = (entry: { label?: string; labelKey?: string }) =>
-    entry.labelKey ? language.t(entry.labelKey) : entry.label ?? ""
+    entry.labelKey ? props.t(entry.labelKey) : entry.label ?? ""
   let lastFocused: HTMLElement | undefined
 
   const rememberFocus = () => {
@@ -50,7 +54,7 @@ export function WindowsAppMenu(props: {
     if (entry.href) props.platform.openLink(entry.href)
   }
 
-  const triggerAriaLabel = language.t("menu.appMenu")
+  const triggerAriaLabel = props.t("menu.appMenu")
 
   return (
     <DropdownMenu gutter={4} modal={false} placement="bottom-start">
@@ -83,7 +87,7 @@ export function WindowsAppMenu(props: {
       <DropdownMenu.Portal>
         <DropdownMenu.Content class="desktop-app-menu">
           <DropdownMenu.Group>
-            <DropdownMenu.GroupLabel class="desktop-app-menu-heading">{language.t("menu.app")}</DropdownMenu.GroupLabel>
+            <DropdownMenu.GroupLabel class="desktop-app-menu-heading">{props.t("menu.app")}</DropdownMenu.GroupLabel>
             {DESKTOP_MENU.filter((menu) => desktopMenuVisible(menu, "windows")).map((menu) => (
               <DesktopMenuSubmenu label={resolveLabel(menu)}>
                 {menu.items
