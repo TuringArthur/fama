@@ -135,6 +135,13 @@ async function readZipEntries(bytes: Uint8Array): Promise<ZipEntry[]> {
   return entries
 }
 
+// 判断解压出的字节是否确实是 OOXML：成功解压的内容至少应含 <document 根。
+// 用于防御性兜底——若运行时缺少 DecompressionStream、或解压链路产出非 XML 的乱码，
+// 直接判定失败并给出明确提示，避免把乱码/原文 XML 当成「正常文本」回传给用户。
+function looksLikeDocumentXml(xml: string): boolean {
+  return xml.includes("<document") || xml.includes("<w:document")
+}
+
 // .docx 文本抽取：解压 word/document.xml 后结构化还原。接受 ArrayBuffer 或 Uint8Array。
 export async function extractDocx(data: ArrayBuffer | Uint8Array): Promise<ExtractedText> {
   const bytes = data instanceof Uint8Array ? data : new Uint8Array(data)
@@ -142,6 +149,14 @@ export async function extractDocx(data: ArrayBuffer | Uint8Array): Promise<Extra
   const doc = entries.find((e) => e.name === "word/document.xml")
   if (!doc) return { text: "", fidelity: "low", note: "未在 .docx 中找到 word/document.xml" }
   const xml = new TextDecoder().decode(doc.bytes)
+  // 解压得到的不是合法 OOXML：通常意味着解压链路异常（运行时不支持 deflate-raw
+  // 或 zip 解析错位），此时直接失败而非把乱码当文本。
+  if (!looksLikeDocumentXml(xml))
+    return {
+      text: "",
+      fidelity: "low",
+      note: "未能正确解压 .docx（word/document.xml 解码后非合法 OOXML）；请确认运行时支持 deflate-raw，或改存为 .txt/.md 后再脱密。",
+    }
   return { text: extractTextFromDocumentXml(xml), fidelity: "high" }
 }
 
