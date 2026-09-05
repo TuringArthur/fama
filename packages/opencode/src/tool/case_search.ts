@@ -3,6 +3,7 @@ import { HttpClient, HttpClientRequest } from "effect/unstable/http"
 import * as Tool from "./tool"
 import DESCRIPTION from "./case_search.txt"
 import { isRecord } from "@/util/record"
+import { assertSafeUrl, isOffline } from "../security"
 
 // 裁判文书检索工具。
 // 中国裁判文书网（wenshu.court.gov.cn）无开放 JSON API、受强风控保护；最高法典型案例同样无稳定结构化接口。
@@ -166,6 +167,15 @@ export const CaseSearchTool = Tool.define(
           const query = params.query.trim()
           if (!query && !params.caseNo) throw new Error("query 或 caseNo 至少提供一个")
 
+          // 离线模式下不发起在线请求。
+          if (isOffline()) {
+            return {
+              output: `已启用离线模式（privacy.offline）：裁判文书检索需要联网，本次未执行。如需检索公开裁判文书，请由用户临时关闭离线模式。`,
+              title: `裁判文书检索（离线跳过）`,
+              metadata: { query, count: 0, degraded: true },
+            }
+          }
+
           yield* ctx.ask({
             permission: "case_search",
             patterns: [query, params.caseNo ?? ""].filter(Boolean),
@@ -175,6 +185,7 @@ export const CaseSearchTool = Tool.define(
           yield* ctx.metadata({ title: `裁判文书检索 "${describeQuery(params)}"` })
 
           // 上游受风控保护：多数情况下无法直接拿到结构化 JSON；这里尽力请求，失败/HTML 一律降级。
+          assertSafeUrl(WENSHU_ENTRY)
           const request = HttpClientRequest.post(WENSHU_ENTRY).pipe(
             HttpClientRequest.bodyUrlParams(buildSearchParams(params)),
             HttpClientRequest.setHeaders({

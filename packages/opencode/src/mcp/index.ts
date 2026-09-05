@@ -17,6 +17,7 @@ import {
   ToolListChangedNotificationSchema,
 } from "@modelcontextprotocol/sdk/types.js"
 import { Config } from "@/config/config"
+import { isOffline } from "@/security"
 import { ConfigMCPV1 } from "@fama-ai/core/v1/config/mcp"
 import { NamedError } from "@fama-ai/core/util/error"
 import { InstallationVersion } from "@fama-ai/core/installation/version"
@@ -359,6 +360,12 @@ export const layer = Layer.effect(
     const create = Effect.fn("MCP.create")(
       function* (key: string, mcp: ConfigMCPV1.Info) {
         if (mcp.enabled === false) {
+          return DISABLED_RESULT
+        }
+
+        // 离线模式：远端 MCP 需要联网，直接按「已禁用」处理；本地 stdio 服务不受影响。
+        if (mcp.type === "remote" && isOffline()) {
+          yield* Effect.logWarning("offline mode enabled, skipping remote MCP server", { key })
           return DISABLED_RESULT
         }
 

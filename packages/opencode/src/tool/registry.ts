@@ -26,6 +26,7 @@ import { Plugin } from "../plugin"
 import { Provider } from "@/provider/provider"
 
 import { WebSearchTool } from "./websearch"
+import { isOffline, setOfflineFromConfig } from "../security"
 import { LawSearchTool } from "./law_search"
 import { LawGetTool } from "./law_get"
 import { CitationCheckTool } from "./citation_check"
@@ -204,7 +205,7 @@ export const layer = Layer.effect(
           }
         }
 
-        yield* config.get()
+        setOfflineFromConfig((yield* config.get()).privacy)
         const questionEnabled = ["app", "cli", "desktop"].includes(flags.client) || flags.enableQuestionTool
 
         const tool = yield* Effect.all({
@@ -290,6 +291,8 @@ export const layer = Layer.effect(
 
     const tools: Interface["tools"] = Effect.fn("ToolRegistry.tools")(function* (input) {
       const filtered = (yield* all()).filter((tool) => {
+        if (isOffline() && (tool.id === WebFetchTool.id || tool.id === WebSearchTool.id)) return false
+
         if (tool.id === WebSearchTool.id) {
           return webSearchEnabled(input.providerID, { exa: flags.enableExa, parallel: flags.enableParallel })
         }

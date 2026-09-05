@@ -1,5 +1,8 @@
 import { app, dialog } from "electron"
 import pkg from "electron-updater"
+import { existsSync, readFileSync } from "node:fs"
+import { homedir } from "node:os"
+import { resolve } from "node:path"
 import { UPDATER_ENABLED } from "./constants"
 import { createUpdaterController, type UpdaterReadyRecord } from "./updater-controller"
 import { getLogger } from "./logging"
@@ -7,6 +10,21 @@ import { getStore } from "./store"
 
 const { autoUpdater } = pkg
 const key = "ready"
+
+// 桌面端离线判定：与引擎 privacy.offline / FAMA_OFFLINE 对齐。
+// electron 主进程不加载引擎配置层，这里 lenient 直读默认位置的全局配置文件，解析失败按未开启处理。
+function offlineEnabled(): boolean {
+  const env = process.env.FAMA_OFFLINE?.toLowerCase()
+  if (env === "1" || env === "true") return true
+  try {
+    const file = resolve(homedir(), ".config", "fama", "fama.json")
+    if (!existsSync(file)) return false
+    const parsed = JSON.parse(readFileSync(file, "utf8"))
+    return parsed?.privacy?.offline === true
+  } catch {
+    return false
+  }
+}
 
 export function setupAutoUpdater(stop: () => Promise<void>) {
   const logger = getLogger()
@@ -25,7 +43,7 @@ export function setupAutoUpdater(stop: () => Promise<void>) {
 
   const store = getStore("opencode.updater")
   return createUpdaterController({
-    enabled: UPDATER_ENABLED,
+    enabled: UPDATER_ENABLED && !offlineEnabled(),
     currentVersion: app.getVersion(),
     backend: autoUpdater,
     persistence: {

@@ -41,8 +41,23 @@ function plain(input: unknown): input is Record<string, unknown> {
   return prototype === Object.prototype || prototype === null
 }
 
+// 日志脱敏（写入侧）：过滤身份证号/案号/手机号，避免案件材料泄入日志文件。
+const REDACTIONS: Array<[RegExp, string]> = [
+  // 18 位身份证号（含校验位 X）
+  [/\b\d{6}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx]\b/g, "[身份证号已脱敏]"],
+  // 案号：如 （2024）京01民终123号 / (2023)最高法民再12号
+  [/[（(]\s*(?:19|20)\d{2}\s*[）)][^\s，。；;（）()]{0,20}?\d{0,10}号/g, "[案号已脱敏]"],
+  // 大陆手机号
+  [/\b1[3-9]\d{9}\b/g, "[手机号已脱敏]"],
+]
+
+function redact(value: string) {
+  return REDACTIONS.reduce((acc, [pattern, replacement]) => acc.replace(pattern, replacement), value)
+}
+
 function format(input: unknown) {
-  const value = typeof input === "string" ? input : Formatter.format(input)
+  const raw = typeof input === "string" ? input : Formatter.format(input)
+  const value = redact(raw)
   return /^[^\s="\\]+$/.test(value) ? value : JSON.stringify(value)
 }
 

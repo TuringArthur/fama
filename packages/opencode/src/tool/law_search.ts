@@ -4,6 +4,7 @@ import * as Tool from "./tool"
 import DESCRIPTION from "./law_search.txt"
 import { isRecord } from "@/util/record"
 import { isIndexAvailable, searchArticles } from "./law-index"
+import { assertSafeUrl, isOffline } from "../security"
 
 // 国家法律法规数据库（flk.npc.gov.cn）检索工具。
 // 上游 API 受 SPA/风控保护，部分网络出口会返回 405 或 HTML 而非 JSON；本工具对失败做优雅降级，
@@ -131,6 +132,20 @@ export const LawSearchTool = Tool.define(
             }
           }
 
+          // 离线模式下不发起在线请求，直接给降级建议。
+          if (isOffline()) {
+            return {
+              output: [
+                `已启用离线模式（privacy.offline），本次仅查询本地法条库，未命中「${query}」。`,
+                `建议：`,
+                `1. 换用法规全称+条号重试（如 law_get「劳动合同法 第10条」）；`,
+                `2. 或由用户临时关闭离线模式后再做在线检索。`,
+              ].join("\n"),
+              title: `法条检索：${query}（离线未命中）`,
+              metadata: { query, page, count: 0, degraded: true, local: false },
+            }
+          }
+
           yield* ctx.ask({
             permission: "law_search",
             patterns: [query],
@@ -138,6 +153,7 @@ export const LawSearchTool = Tool.define(
             metadata: { query, page },
           })
 
+          assertSafeUrl(SEARCH_URL)
           const request = HttpClientRequest.post(SEARCH_URL).pipe(
             HttpClientRequest.bodyUrlParams(buildSearchBody({ query, page, size: params.size })),
             HttpClientRequest.setHeaders({

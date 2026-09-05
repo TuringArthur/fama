@@ -65,6 +65,14 @@ export const Info = Schema.Struct({
     description:
       "Automatically update to the latest version. Set to true to auto-update, false to disable, or 'notify' to show update notifications",
   }),
+  privacy: Schema.optional(
+    Schema.Struct({
+      offline: Schema.optional(Schema.Boolean).annotate({
+        description:
+          "Enable offline mode: hides network-facing tools (webfetch/websearch), skips online law/case lookup and remote MCP servers, and disables auto-update. Intended for confidential legal workloads.",
+      }),
+    }),
+  ).annotate({ description: "Privacy settings (Fama). See docs/security.md" }),
   disabled_providers: Schema.optional(Schema.mutable(Schema.Array(Schema.String))).annotate({
     description: "Disable providers that are loaded automatically",
   }),

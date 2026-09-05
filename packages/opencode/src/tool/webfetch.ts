@@ -5,6 +5,7 @@ import * as Tool from "./tool"
 import TurndownService from "turndown"
 import DESCRIPTION from "./webfetch.txt"
 import { isImageAttachment } from "@/util/media"
+import { assertSafeUrl, isOffline } from "../security"
 
 const MAX_RESPONSE_SIZE = 5 * 1024 * 1024 // 5MB
 const DEFAULT_TIMEOUT = 30 * 1000 // 30 seconds
@@ -32,9 +33,9 @@ export const WebFetchTool = Tool.define(
       parameters: Parameters,
       execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
         Effect.gen(function* () {
-          if (!params.url.startsWith("http://") && !params.url.startsWith("https://")) {
-            throw new Error("URL must start with http:// or https://")
-          }
+          if (isOffline()) throw new Error("离线模式已启用（privacy.offline）：webfetch 不可用")
+          // 仅允许 http/https；拒绝 localhost/环回/私有/保留地址
+          assertSafeUrl(params.url)
 
           yield* ctx.ask({
             permission: "webfetch",

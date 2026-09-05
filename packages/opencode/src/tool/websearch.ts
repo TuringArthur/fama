@@ -6,6 +6,7 @@ import DESCRIPTION from "./websearch.txt"
 import { checksum } from "@fama-ai/core/util/encode"
 import { InstallationVersion } from "@fama-ai/core/installation/version"
 import { RuntimeFlags } from "@/effect/runtime-flags"
+import { isOffline } from "../security"
 
 export const Parameters = Schema.Struct({
   query: Schema.String.annotate({ description: "Websearch query" }),
@@ -109,6 +110,7 @@ export const WebSearchTool = Tool.define(
       parameters: Parameters,
       execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
         Effect.gen(function* () {
+          if (isOffline()) throw new Error("离线模式已启用（privacy.offline）：websearch 不可用")
           const provider = selectWebSearchProvider(ctx.sessionID, {
             exa: flags.enableExa,
             parallel: flags.enableParallel,
