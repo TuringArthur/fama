@@ -1,0 +1,72 @@
+{
+  "label": "post-m1",
+  "gitRev": "3bd63b0",
+  "bun": "1.4.1",
+  "timestamp": "2026-09-05T07:00:06.293Z",
+  "buildMs": 14967,
+  "totalBytes": 66147399,
+  "categories": {
+    "image": {
+      "count": 19,
+      "bytes": 1796222
+    },
+    "other": {
+      "count": 781,
+      "bytes": 38586668
+    },
+    "js": {
+      "count": 753,
+      "bytes": 22848511
+    },
+    "font": {
+      "count": 63,
+      "bytes": 2523692
+    },
+    "css": {
+      "count": 7,
+      "bytes": 392306
+    }
+  },
+  "top10": [
+    {
+      "file": "assets/index-Bp2Milpd.js.map",
+      "bytes": 7933329
+    },
+    {
+      "file": "assets/index-Bp2Milpd.js",
+      "bytes": 1829257
+    },
+    {
+      "file": "assets/session-CZt4g0yD.js.map",
+      "bytes": 1253288
+    },
+    {
+      "file": "assets/JetBrainsMonoNerdFontMono-Regular.woff2",
+      "bytes": 1060580
+    },
+    {
+      "file": "assets/sprite-Fb-TFjRY.svg",
+      "bytes": 943958
+    },
+    {
+      "file": "assets/worker-B7E0o2bU.js.map",
+      "bytes": 851079
+    },
+    {
+      "file": "assets/session-composer-state-B939AI_0.js.map",
+      "bytes": 828618
+    },
+    {
+      "file": "assets/cpp-B28oCXVK.js.map",
+      "bytes": 816157
+    },
+    {
+      "file": "assets/cpp-UfJy6YNI.js.map",
+      "bytes": 816148
+    },
+    {
+      "file": "assets/dialog-select-directory-v2-BLbOMgnb.js.map",
+      "bytes": 802310
+    }
+  ]
+}

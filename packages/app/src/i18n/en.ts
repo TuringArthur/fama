@@ -426,6 +426,19 @@ export const dict = {
   "dialog.releaseNotes.action.hideFuture": "Don't show these in the future",
   "dialog.releaseNotes.media.alt": "Release preview",
 
+  "dialog.onboarding.title": "Welcome to Fama",
+  "dialog.onboarding.description":
+    "The AI legal assistant for attorneys, in-house counsel, and legal professionals. Pick your role to tailor the experience — you can change it anytime.",
+  "dialog.onboarding.role.lawyer": "Attorney",
+  "dialog.onboarding.role.counsel": "In-house counsel",
+  "dialog.onboarding.role.judge": "Judge",
+  "dialog.onboarding.role.prosecutor": "Prosecutor",
+  "dialog.onboarding.role.student": "Student / Academic",
+  "dialog.onboarding.role.developer": "Developer",
+  "dialog.onboarding.action.bindKey": "Connect an API key",
+  "dialog.onboarding.action.zen": "Sign in to opencode Zen / Go",
+  "dialog.onboarding.action.later": "I'll set up models later",
+
   "context.breakdown.title": "Context Breakdown",
   "context.breakdown.note": 'Approximate breakdown of input tokens. "Other" includes tool definitions and overhead.',
   "context.breakdown.system": "System",

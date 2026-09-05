@@ -6,13 +6,35 @@
   src: url("/assets/JetBrainsMonoNerdFontMono-Regular.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
   font-family: "Inter";
-  src: url("/assets/Inter.ttf") format("truetype");
+  src: url("/assets/Inter-var.woff2") format("woff2-variations");
   font-weight: 100 900;
   font-style: normal;
+  font-display: swap;
+}
+
+/* Brand/content serif: small latin subset bundled, CJK falls through to the
+   system serif stack (Songti/Noto Serif CJK/SimSun) so no large font ships. */
+@font-face {
+  font-family: "Fama Serif";
+  src: url("/assets/fonts/FamaSerif-latin-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+2013-2014, U+2018-201D, U+2026;
+}
+
+@font-face {
+  font-family: "Fama Serif";
+  src: url("/assets/fonts/FamaSerif-latin-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+2013-2014, U+2018-201D, U+2026;
 }
 
 @layer components {

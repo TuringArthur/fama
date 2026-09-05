@@ -112,7 +112,7 @@ const appBindingCommands = [
   "variant.list",
   "provider.connect",
   "console.org.switch",
-  "opencode.status",
+  "fama.status",
   "theme.switch",
   "theme.switch_mode",
   "theme.mode.lock",
@@ -747,7 +747,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
           ]
         : []),
       {
-        name: "opencode.status",
+        name: "fama.status",
         title: "View status",
         slashName: "status",
         run: () => {
@@ -796,7 +796,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         name: "docs.open",
         title: "Open docs",
         run: () => {
-          open("https://opencode.ai/docs").catch(() => {})
+          open("https://github.com/TuringArthur/fama").catch(() => {})
           dialog.clear()
         },
         category: "System",

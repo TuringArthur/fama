@@ -1,5 +1,8 @@
 {
-  "$schema": "https://fama.ai/config.json",
+  "$schema": "https://fama.stdlaw.cn/config.json",
+  // Developing fama itself: keep the engineering agent as the working default
+  // (the product-level default for end users is "lawyer").
+  "default_agent": "build",
   "provider": {},
   "permission": {},
   "references": {

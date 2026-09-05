@@ -1,85 +1,34 @@
 <p align="center">
-  <a href="https://fama.ai">
+  <a href="https://fama.stdlaw.cn">
     <picture>
       <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
       <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="fama logo">
+      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="Fama logo">
     </picture>
   </a>
 </p>
-<p align="center">The open source AI coding agent.</p>
+<p align="center">The open-source AI legal assistant.</p>
 <p align="center">
-  <a href="https://fama.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/fama-ai"><img alt="npm" src="https://img.shields.io/npm/v/fama-ai?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/fama/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/fama/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="README.md">English</a> | <a href="README.zh.md">简体中文</a>
 </p>
-
-<p align="center">
-  <a href="README.md">English</a> |
-  <a href="README.zh.md">简体中�?/a> |
-  <a href="README.zht.md">繁體中文</a> |
-  <a href="README.ko.md">한국�?/a> |
-  <a href="README.de.md">Deutsch</a> |
-  <a href="README.es.md">Español</a> |
-  <a href="README.fr.md">Français</a> |
-  <a href="README.it.md">Italiano</a> |
-  <a href="README.da.md">Dansk</a> |
-  <a href="README.ja.md">日本�?/a> |
-  <a href="README.pl.md">Polski</a> |
-  <a href="README.ru.md">Русский</a> |
-  <a href="README.bs.md">Bosanski</a> |
-  <a href="README.ar.md">العربية</a> |
-  <a href="README.no.md">Norsk</a> |
-  <a href="README.br.md">Português (Brasil)</a> |
-  <a href="README.th.md">ไท�?/a> |
-  <a href="README.tr.md">Türkçe</a> |
-  <a href="README.uk.md">Українська</a> |
-  <a href="README.bn.md">বাংল�?/a> |
-  <a href="README.gr.md">Ελληνικά</a> |
-  <a href="README.vi.md">Tiếng Việt</a>
-</p>
-
-[![fama Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://fama.ai)
 
 ---
+
+Fama (法码) is a legal-scenario AI agent built on the OpenCode engine: legal document
+drafting (53 built-in Chinese legal document skills), statute retrieval, contract
+analysis, and a full coding-agent core underneath — for lawyers, in-house counsel,
+and legal professionals.
 
 ### Installation
 
 ```bash
-# YOLO
-curl -fsSL https://fama.ai/install | bash
+# Install script
+curl -fsSL https://fama.stdlaw.cn/install | bash
 
-# Package managers
-npm i -g fama-ai@latest        # or bun/pnpm/yarn
-scoop install fama             # Windows
-choco install fama             # Windows
-brew install anomalyco/tap/fama # macOS and Linux (recommended, always up to date)
-brew install fama              # macOS and Linux (official brew formula, updated less)
-sudo pacman -S fama            # Arch Linux (Stable)
-paru -S fama-bin               # Arch Linux (Latest from AUR)
-mise use -g fama               # Any OS
-nix run nixpkgs#fama           # or github:anomalyco/fama for latest dev branch
-```
+# npm
+npm i -g fama@latest        # or bun/pnpm/yarn
 
-> [!TIP]
-> Remove versions older than 0.1.x before installing.
-
-### Desktop App (BETA)
-
-fama is also available as a desktop application. Download directly from the [releases page](https://github.com/anomalyco/fama/releases) or [fama.ai/download](https://fama.ai/download).
-
-| Platform              | Download                           |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `fama-desktop-mac-arm64.dmg`   |
-| macOS (Intel)         | `fama-desktop-mac-x64.dmg`     |
-| Windows               | `fama-desktop-windows-x64.exe` |
-| Linux                 | `.deb`, `.rpm`, or `.AppImage`     |
-
-```bash
-# macOS (Homebrew)
-brew install --cask fama-desktop
-# Windows (Scoop)
-scoop bucket add extras; scoop install extras/fama-desktop
+# Desktop app: download from GitHub Releases
 ```
 
 #### Installation Directory
@@ -91,39 +40,40 @@ The install script respects the following priority order for the installation pa
 3. `$HOME/bin` - Standard user binary directory (if it exists or can be created)
 4. `$HOME/.fama/bin` - Default fallback
 
-```bash
-# Examples
-FAMA_INSTALL_DIR=/usr/local/bin curl -fsSL https://fama.ai/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://fama.ai/install | bash
-```
+### Legal Agents
 
-### Agents
+Fama ships role-based legal agents, each with its own system prompt, guardrails,
+and citation discipline:
 
-fama includes two built-in agents you can switch between with the `Tab` key.
+- **lawyer** - Attorney work: litigation documents, contracts, legal research
+- **judge** - Court document drafting assistance (assistive only; never replaces judicial authority)
+- **prosecutor** - Prosecution documents under the objectivity duty
+- **counsel** - In-house counsel and compliance work
 
-- **build** - Default, full-access agent for development work
-- **plan** - Read-only agent for analysis and code exploration
-  - Denies file edits by default
-  - Asks permission before running bash commands
-  - Ideal for exploring unfamiliar codebases or planning changes
+Developer-facing agents from the underlying engine (**build**, **plan**, **general**)
+remain fully available — Fama keeps the complete coding-agent capability set.
 
-Also included is a **general** subagent for complex searches and multistep tasks.
-This is used internally and can be invoked using `@general` in messages.
+### Built-in Legal Skills
 
-Learn more about [agents](https://fama.ai/docs/agents).
+53 document skills are bundled out of the box: civil/criminal/administrative
+pleadings, judgments, prosecution documents, police investigation records,
+arbitration and notarization documents, and contract drafting/review.
 
 ### Documentation
 
-For more info on how to configure fama, [**head over to our docs**](https://fama.ai/docs).
+Configuration and extension docs live in [CONTEXT.md](./CONTEXT.md) and
+[AGENTS.md](./AGENTS.md).
 
 ### Contributing
 
-If you're interested in contributing to fama, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before submitting a pull request.
 
-### Building on fama
+### License & Provenance
 
-If you are working on a project that's related to fama and is using "fama" as part of its name, for example "fama-dashboard" or "fama-mobile", please add a note to your README to clarify that it is not built by the fama team and is not affiliated with us in any way.
+Fama is MIT-licensed, forked from [OpenCode](https://github.com/anomalyco/opencode).
+The fork provenance is intentionally transparent — the engine's service
+integrations (provider gateway, account console) remain compatible upstream.
 
 ---
 
-**Join our community** [Discord](https://discord.gg/fama) | [X.com](https://x.com/fama)
+**标准法律 (stdlaw.cn)** · [fama.stdlaw.cn](https://fama.stdlaw.cn) · [calculator.stdlaw.cn](https://calculator.stdlaw.cn)

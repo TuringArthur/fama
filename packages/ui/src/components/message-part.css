@@ -215,6 +215,12 @@
     margin-top: 0;
   }
 
+  &[data-role="assistant"] [data-slot="text-part-body"] {
+    font-family: var(--font-family-serif);
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
   [data-slot="text-part-copy-wrapper"] {
     min-height: 24px;
     margin-top: 4px;

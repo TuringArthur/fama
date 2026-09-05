@@ -1,7 +1,7 @@
 {
-  "$schema": "https://fama.ai/desktop-theme.json",
-  "name": "OpenCode",
-  "id": "opencode",
+  "$schema": "https://fama.stdlaw.cn/desktop-theme.json",
+  "name": "Fama",
+  "id": "fama",
   "light": {
     "palette": {
       "neutral": "#ffffff",

@@ -38,6 +38,7 @@ import { LanguageProvider, type Locale, useLanguage } from "@/context/language"
 import { LayoutProvider } from "@/context/layout"
 import { ModelsProvider } from "@/context/models"
 import { NotificationProvider } from "@/context/notification"
+import { OnboardingGate } from "@/components/onboarding"
 import { PermissionProvider } from "@/context/permission"
 import { PromptProvider } from "@/context/prompt"
 import { ServerConnection, ServerProvider, serverName, useServer } from "@/context/server"
@@ -212,6 +213,7 @@ function SharedProviders(props: ParentProps) {
   return (
     <SettingsProvider>
       <BodyDesignClass />
+      <OnboardingGate />
       <CommandProvider>
         <HighlightsProvider>{props.children}</HighlightsProvider>
       </CommandProvider>

@@ -1,0 +1,72 @@
+{
+  "label": "pre-m1",
+  "gitRev": "3bd63b0",
+  "bun": "1.4.1",
+  "timestamp": "2026-09-05T06:20:14.466Z",
+  "buildMs": 13945,
+  "totalBytes": 66529414,
+  "categories": {
+    "image": {
+      "count": 18,
+      "bytes": 1697710
+    },
+    "other": {
+      "count": 784,
+      "bytes": 38583537
+    },
+    "js": {
+      "count": 756,
+      "bytes": 22848508
+    },
+    "font": {
+      "count": 61,
+      "bytes": 3008236
+    },
+    "css": {
+      "count": 7,
+      "bytes": 391423
+    }
+  },
+  "top10": [
+    {
+      "file": "assets/index-CB5ZzKPM.js.map",
+      "bytes": 7846902
+    },
+    {
+      "file": "assets/index-CB5ZzKPM.js",
+      "bytes": 1800099
+    },
+    {
+      "file": "assets/session-DEa__6Oe.js.map",
+      "bytes": 1253045
+    },
+    {
+      "file": "assets/JetBrainsMonoNerdFontMono-Regular.woff2",
+      "bytes": 1060580
+    },
+    {
+      "file": "assets/sprite-Fb-TFjRY.svg",
+      "bytes": 943958
+    },
+    {
+      "file": "assets/Inter.ttf",
+      "bytes": 874708
+    },
+    {
+      "file": "assets/worker-B7E0o2bU.js.map",
+      "bytes": 851079
+    },
+    {
+      "file": "assets/session-composer-state-QQdm0I9Q.js.map",
+      "bytes": 828591
+    },
+    {
+      "file": "assets/cpp-B28oCXVK.js.map",
+      "bytes": 816157
+    },
+    {
+      "file": "assets/cpp-UfJy6YNI.js.map",
+      "bytes": 816148
+    }
+  ]
+}
