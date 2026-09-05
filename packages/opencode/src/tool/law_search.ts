@@ -3,6 +3,7 @@ import { HttpClient, HttpClientRequest } from "effect/unstable/http"
 import * as Tool from "./tool"
 import DESCRIPTION from "./law_search.txt"
 import { isRecord } from "@/util/record"
+import { isIndexAvailable, searchArticles } from "./law-index"
 
 // 国家法律法规数据库（flk.npc.gov.cn）检索工具。
 // 上游 API 受 SPA/风控保护，部分网络出口会返回 405 或 HTML 而非 JSON；本工具对失败做优雅降级，
@@ -106,13 +107,36 @@ export const LawSearchTool = Tool.define(
           const query = params.query.trim()
           if (!query) throw new Error("query 不能为空")
 
+          yield* ctx.metadata({ title: `法条检索 "${query}"（第${page}页）` })
+
+          // 本地法条库优先（离线、秒级、无风控）：命中即返回条文全文。
+          if (isIndexAvailable()) {
+            const hits = searchArticles(query, 8)
+            if (hits.length > 0) {
+              const output = [
+                `在本地法条库（离线索引）中检索「${query}」，命中 ${hits.length} 条：`,
+                "",
+                ...hits.map(
+                  (hit, i) =>
+                    `${i + 1}. 《${hit.lawTitle}》${hit.num}${hit.chapter ? `（${hit.chapter}）` : ""}\n${hit.content.slice(0, 600)}${hit.content.length > 600 ? "…" : ""}`,
+                ),
+                "",
+                `提示：本地索引为静态快照，法条可能已修订；重大判断请用 law_search（在线）或法宝数据源核对现行版本。`,
+              ].join("\n")
+              return {
+                output,
+                title: `法条检索：${query}（本地）`,
+                metadata: { query, page, count: hits.length, local: true, degraded: false },
+              }
+            }
+          }
+
           yield* ctx.ask({
             permission: "law_search",
             patterns: [query],
             always: ["*"],
             metadata: { query, page },
           })
-          yield* ctx.metadata({ title: `法条检索 "${query}"（第${page}页）` })
 
           const request = HttpClientRequest.post(SEARCH_URL).pipe(
             HttpClientRequest.bodyUrlParams(buildSearchBody({ query, page, size: params.size })),
@@ -135,7 +159,7 @@ export const LawSearchTool = Tool.define(
             return {
               output: fallbackGuidance(query, page),
               title: `法条检索：${query}`,
-              metadata: { query, page, count: 0, degraded: true },
+              metadata: { query, page, count: 0, degraded: true, local: false },
             }
           }
 
@@ -146,7 +170,7 @@ export const LawSearchTool = Tool.define(
             return {
               output: fallbackGuidance(query, page),
               title: `法条检索：${query}`,
-              metadata: { query, page, count: 0, degraded: true },
+              metadata: { query, page, count: 0, degraded: true, local: false },
             }
           }
 
@@ -157,7 +181,7 @@ export const LawSearchTool = Tool.define(
             return {
               output: fallbackGuidance(query, page),
               title: `法条检索：${query}`,
-              metadata: { query, page, count: 0, degraded: true },
+              metadata: { query, page, count: 0, degraded: true, local: false },
             }
           }
 
@@ -166,7 +190,7 @@ export const LawSearchTool = Tool.define(
             return {
               output: `未在数据库中找到匹配「${query}」的法律法规。请核对名称后重试，或访问 https://flk.npc.gov.cn/ 手动检索。`,
               title: `法条检索：${query}`,
-              metadata: { query, page, count: 0, degraded: false },
+              metadata: { query, page, count: 0, degraded: false, local: false },
             }
           }
 
@@ -177,7 +201,7 @@ export const LawSearchTool = Tool.define(
             `提示：请以「公布/时效」字段确认现行有效版本；如需具体条文全文，可用 webfetch 抓取对应来源链接。`,
           ].join("\n")
 
-          return { output, title: `法条检索：${query}`, metadata: { query, page, count: records.length, degraded: false } }
+          return { output, title: `法条检索：${query}`, metadata: { query, page, count: records.length, degraded: false, local: false } }
         }).pipe(Effect.orDie),
     }
   }),

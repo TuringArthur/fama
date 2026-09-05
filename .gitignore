@@ -36,3 +36,6 @@ tsconfig.tsbuildinfo
 # local tooling state
 .mimosa/
 .zcode/
+
+# local statute index build artifact
+fama-laws.db

@@ -27,6 +27,8 @@ import { Provider } from "@/provider/provider"
 
 import { WebSearchTool } from "./websearch"
 import { LawSearchTool } from "./law_search"
+import { LawGetTool } from "./law_get"
+import { CitationCheckTool } from "./citation_check"
 import { CaseSearchTool } from "./case_search"
 import { ContractExtractTool } from "./contract_extract"
 import { LspTool } from "./lsp"
@@ -102,6 +104,8 @@ export const layer = Layer.effect(
     const webfetch = yield* WebFetchTool
     const websearch = yield* WebSearchTool
     const lawsearch = yield* LawSearchTool
+    const lawget = yield* LawGetTool
+    const citationcheck = yield* CitationCheckTool
     const casesearch = yield* CaseSearchTool
     const contractextract = yield* ContractExtractTool
     const shell = yield* ShellTool
@@ -214,6 +218,8 @@ export const layer = Layer.effect(
           todo: Tool.init(todo),
           search: Tool.init(websearch),
           lawsearch: Tool.init(lawsearch),
+          lawget: Tool.init(lawget),
+          citationcheck: Tool.init(citationcheck),
           casesearch: Tool.init(casesearch),
           contractextract: Tool.init(contractextract),
           skill: Tool.init(skilltool),
@@ -239,6 +245,8 @@ export const layer = Layer.effect(
             tool.todo,
             tool.search,
             tool.lawsearch,
+            tool.lawget,
+            tool.citationcheck,
             tool.casesearch,
             tool.contractextract,
             tool.skill,
