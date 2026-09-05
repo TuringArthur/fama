@@ -23,6 +23,17 @@ const AGENTS_EXTERNAL_DIR = ".agents"
 const EXTERNAL_SKILL_PATTERN = "skills/**/SKILL.md"
 const FAMA_SKILL_PATTERN = "{skill,skills}/**/SKILL.md"
 const SKILL_PATTERN = "**/SKILL.md"
+const BUILTIN_SKILLS_ENV = "FAMA_BUILTIN_SKILLS"
+
+// Legal skills shipped with fama. In development this resolves to the repo
+// root `skills/` directory; packaged builds ship the same layout and point
+// FAMA_BUILTIN_SKILLS at it. Scanned last so user-defined skills with the
+// same name always win (add() keeps the first registration).
+function builtinSkillDirs(): string[] {
+  const override = process.env[BUILTIN_SKILLS_ENV]
+  if (override) return [override]
+  return [path.resolve(import.meta.dir, "../../../../skills")]
+}
 
 // Built-in skill that ships with fama. The model's intuition for what an
 // fama.json should look like is often wrong, and fama hard-fails on
@@ -224,6 +235,11 @@ const discoverSkills = Effect.fnUntraced(function* (
     for (const dir of pulledDirs) {
       yield* scan(state, dir, SKILL_PATTERN)
     }
+  }
+
+  for (const dir of builtinSkillDirs()) {
+    if (!(yield* fsys.isDir(dir))) continue
+    yield* scan(state, dir, SKILL_PATTERN, { dot: true, scope: "builtin" })
   }
 
   return {
