@@ -10,7 +10,7 @@
 
 ---
 
-Fama (法码) is a legal-scenario AI agent built on the OpenCode engine: legal document
+Fama (法码) is a legal-scenario AI agent built on the OA engine: legal document
 drafting (53 built-in Chinese legal document skills), statute retrieval, contract
 analysis, and a full coding-agent core underneath — for lawyers, in-house counsel,
 and legal professionals.
