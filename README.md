@@ -1,10 +1,6 @@
 <p align="center">
   <a href="https://fama.stdlaw.cn">
-    <picture>
-      <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="Fama logo">
-    </picture>
+
   </a>
 </p>
 <p align="center">The open-source AI legal assistant.</p>
